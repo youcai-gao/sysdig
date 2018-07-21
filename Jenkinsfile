@@ -1,10 +1,11 @@
 pipeline {
-    agent { docker { image 'python:3.5.1' } }
+    agent { dockerfile true }
     stages {
         stage('build') {
             steps {
-                sh 'python --version'
                 sh 'uname -a'
+		sh 'ls -a /build'
+		sh 'tree /build'
             }
         }
     }
