@@ -4,7 +4,8 @@ pipeline {
         stage('build') {
             steps {
                 sh 'uname -a'
-		sh 'ls -a /build'
+		checkout scm
+		sh 'ls -a ' 
 		sh 'tree /build'
             }
         }
