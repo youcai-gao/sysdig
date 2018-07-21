@@ -9,6 +9,7 @@ pipeline {
 		sh 'mkdir -p xxx && cd xxx && bash -x ../scripts/build-probe-binaries sysdig-probe 0.22.0 test Fedora-Atomic' 
 		sh 'pwd'
 		sh 'ls -l xxx'
+		sh 'ls -x xxx/output'
             }
         }
     }
