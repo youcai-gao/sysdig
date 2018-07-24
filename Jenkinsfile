@@ -23,8 +23,9 @@ pipeline {
                 parallel (
                     "info" : { sh 'pwd -P && df -h' },
                     "foo" : { sh 'sleep 60 && echo foo' },
-                    "fedora-atomic" : { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Fedora-Atomic' },
-                    "ubuntu" : { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable Ubuntu' },
+                    "bar" : { sh 'sleep 60 && echo bar' },
+                //    "fedora-atomic" : { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Fedora-Atomic' },
+                //    "ubuntu" : { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable Ubuntu' },
                 )
             }
         }
@@ -36,6 +37,8 @@ pipeline {
                 sh 'pwd -P'
                 sh 'df -h'
                 sh 'ls -l probe/output/'
+		build job: "test-publish-probe-modules"
+		sh ' echo probe modules published'
             }
         }
     }
