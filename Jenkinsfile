@@ -7,7 +7,7 @@ pipeline {
                 sh 'uname -a'
                 sh 'pwd -P'
                 sh 'df -h'
-		checkout scm
+		dir('sysdig') { checkout scm }
                 sh 'pwd -P; df -h'
                 sh 'ls -l'
                 sh 'echo build dokcer images of various builders ...'
