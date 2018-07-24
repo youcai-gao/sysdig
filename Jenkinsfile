@@ -35,6 +35,7 @@ pipeline {
                 sh 'hostname'
                 sh 'uname -a'
                 sh 'pwd -P'
+		sh 'echo workspace = $WORKSPACE'
                 sh 'df -h'
                 sh 'ls -l probe/output/'
 		build job: "test-publish-probe-modules"
