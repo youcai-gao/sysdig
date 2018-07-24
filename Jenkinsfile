@@ -31,7 +31,7 @@ pipeline {
         }
     
         stage ('s3 publishing') {
-	    when { branch "xxx" }
+	    when { branch "jenkins-pipeline-test" }
             steps {
                 sh 'hostname'
                 sh 'uname -a'
