@@ -451,11 +451,7 @@ function debian_build {
 	cd ${BASEDIR}
 }
 
-if [ -z "$EXTRA_BUILD_INSTRU" ]; then
-	#
-	# Ubuntu build
-	#
-
+function Ubuntu_build_routine {
 	echo Building Ubuntu
 	DIR=$(dirname $(readlink -f $0))
 	URLS="$($DIR/kernel-crawler.py Ubuntu)"
@@ -464,6 +460,14 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	do
 		ubuntu_build $URL
 	done
+}
+
+if [ -z "$EXTRA_BUILD_INSTRU" ]; then
+	#
+	# Ubuntu build
+	#
+
+	Ubuntu_build_routine
 
 	#
 	# RHEL build
@@ -620,6 +624,8 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	#fi
 
 	echo "Success."
+elif [ "Ubuntu" = "$EXTRA_BUILD_INSTRU" ]; then
+	Ubuntu_build_routine
 elif [ "CONTAINER-Fedora-Atomic" = "$EXTRA_BUILD_INSTRU" ]; then
 	build_for_fedoro_atomic_in_container
 elif [ "Fedora-Atomic" = "$EXTRA_BUILD_INSTRU" ]; then
