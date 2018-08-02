@@ -261,6 +261,9 @@ public:
 	size_t m_program_hash_falco;
 	int32_t m_tty;
 
+	// If true, this thread is part of a container health check
+	bool m_is_container_healthcheck;
+
 	//
 	// State for multi-event processing
 	//

@@ -189,6 +189,9 @@ bool sinsp_container_engine_docker::parse_docker(sinsp_container_manager* manage
 		container->m_imageid = imgstr.substr(cpos + 1);
 	}
 
+	// xxx/mstemm also need to write health check info to json and read from json
+	container->m_has_healthcheck = xxx
+
 	bool no_name = !container->m_imageid.empty() &&
 		strncmp(container->m_image.c_str(), container->m_imageid.c_str(),
 			MIN(container->m_image.length(), container->m_imageid.length())) == 0;
@@ -414,8 +417,8 @@ bool sinsp_container_engine_docker::resolve(sinsp_container_manager* manager, si
 sinsp_docker_response sinsp_container_engine_docker::get_docker(const sinsp_container_manager* manager, const string& url, string &json)
 {
 	const char* response;
-	bool qdres = wh_query_docker(manager->m_inspector->get_wmi_handle(), 
-		(char*)url.c_str(), 
+	bool qdres = wh_query_docker(manager->m_inspector->get_wmi_handle(),
+		(char*)url.c_str(),
 		&response);
 	if(qdres == false)
 	{
@@ -655,7 +658,7 @@ bool sinsp_container_engine_libvirt_lxc::resolve(sinsp_container_manager* manage
 
 	if (!match(tinfo, &container_info))
 		return false;
-	
+
 	tinfo->m_container_id = container_info.m_id;
 	if (!manager->container_exists(container_info.m_id))
 	{
@@ -701,7 +704,7 @@ bool sinsp_container_engine_mesos::resolve(sinsp_container_manager* manager, sin
 
 	if (!match(tinfo, &container_info))
 		return false;
-	
+
 	tinfo->m_container_id = container_info.m_id;
 	if (!manager->container_exists(container_info.m_id))
 	{
@@ -1268,6 +1271,39 @@ string sinsp_container_manager::get_container_name(sinsp_threadinfo* tinfo)
 	}
 
 	return res;
+}
+
+void sinsp_container_manager::identify_docker_healthcheck(sinsp_container_info &cinfo,
+							  sinsp_threadinfo *tinfo)
+{
+	// This thread is a part of a container healthcheck if its
+	// parent thread is part of a health check.
+	sinsp_threadinfo* ptinfo = tinfo->get_parent_thread();
+
+	if(!ptinfo)
+	{
+		return;
+	}
+
+	if(ptinfo->m_is_container_healthcheck)
+	{
+		tinfo->m_is_container_healthcheck = true;
+		return;
+	}
+
+	// Otherwise, the thread is a part of a container healthcheck if:
+	//
+	// 1. the comm and args match the container's healthcheck
+	// 2. the parent is *not* in a container
+	//
+	// This indicates the initial process of the healthcheck
+
+	if(cinfo.m_has_healthcheck &&
+	   cinfo.m_healthcheck_comm == tinfo->m_comm &&
+	   cinfo.m_healthcheck_args == tinfo->m_args &&
+	   ptinfo.m_container_id == "") {
+		tinfo->m_is_container_healthcheck = true;
+	}
 }
 
 void sinsp_container_manager::subscribe_on_new_container(new_container_cb callback)
