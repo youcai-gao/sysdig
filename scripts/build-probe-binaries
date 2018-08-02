@@ -462,17 +462,7 @@ function Ubuntu_build_routine {
 	done
 }
 
-if [ -z "$EXTRA_BUILD_INSTRU" ]; then
-	#
-	# Ubuntu build
-	#
-
-	Ubuntu_build_routine
-
-	#
-	# RHEL build
-	#
-
+function RHEL_build_routine {
 	echo Building RHEL
 	DIR=$(dirname $(readlink -f $0))
 	URLS="$($DIR/kernel-crawler.py CentOS)"
@@ -481,11 +471,9 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	do
 		rhel_build $URL
 	done
+}
 
-	#
-	# Fedora build
-	#
-
+function Fedora_build_routine {
 	echo Building Fedora
 	DIR=$(dirname $(readlink -f $0))
 	URLS="$($DIR/kernel-crawler.py Fedora)"
@@ -494,16 +482,9 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	do
 		rhel_build $URL
 	done
+}
 
-	#
-	# Fedora Atomic build
-	#
-	echo "Building Fedora Atomic in container"
-	build_for_fedoro_atomic_in_container
-
-	#
-	# CoreOS build
-	#
+function CoreOS_build_routine {
 	echo Building CoreOS
 	DIR=$(dirname $(readlink -f $0))
 	URLS="$($DIR/kernel-crawler.py CoreOS)"
@@ -523,10 +504,9 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 			coreos_build_old $URL $COREOS_VERSION
 		fi
 	done
+}
 
-	#
-	# boot2docker build
-	#
+function boot2docker_build_routine {
 	echo Building boot2docker
 	DIR=$(dirname $(readlink -f $0))
 	$DIR/boot2docker-kernel-crawler.py | \
@@ -534,10 +514,9 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 		do
 			boot2docker_build $KERNEL_ARGS
 		done
+}
 
-	#
-	# Debian build
-	#
+function Debian_build_routine {
 	echo Building Debian
 	DIR=$(dirname $(readlink -f $0))
 	URLS="$($DIR/kernel-crawler.py Debian)"
@@ -546,18 +525,9 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	do
 		debian_build $URL
 	done
-	# XXX agent/434 - We need to force a build for certain kernel versions
-	# because they are still in use by some GCE customers but the headers
-	# are no longer available from the mirror. We pass the URL but nothing
-	# needs to be downloaded because we already have it cached on the builder.
-	#
-	# These are no longer available, so disabling for now.
-	#debian_build https://mirrors.kernel.org/debian/pool/main/l/linux/linux-headers-3.16.0-4-amd64_3.16.36-1+deb8u2_amd64.deb
-	#debian_build https://mirrors.kernel.org/debian/pool/main/l/linux/linux-headers-3.16.0-4-amd64_3.16.39-1+deb8u2_amd64.deb
+}
 
-	#
-	# Oracle RHCK build
-	#
+function Oracle_RHCK_build_routine {
 	echo Building Oracle RHCK
 	DIR=$(dirname $(readlink -f $0))
 	URLS="$($DIR/oracle-kernel-crawler.py Oracle-RHCK)"
@@ -566,6 +536,76 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	do
 		rhel_build $URL
 	done
+}
+
+function Oracle_Linux_6_UEK_builder_build_routine {
+	echo "Creating Oracle Linux 6 UEK builder"
+	docker ps -q -f 'name=ol6-build' | xargs --no-run-if-empty docker rm
+	docker build -t ol6-builder:latest -f ../sysdig/scripts/Dockerfile.ol6 --pull ../sysdig/scripts
+	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi
+	docker run -i --rm --name ol6-build -v $BASEDIR:/build/probe ol6-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME OL6-UEK
+}
+
+function Oracle_Linux_7_UEK_builder_build_routine {
+	echo "Creating Oracle Linux 7 UEK builder"
+	docker ps -q -f 'name=ol7-build' | xargs --no-run-if-empty docker rm
+	docker build -t ol7-builder:latest -f ../sysdig/scripts/Dockerfile.ol7 --pull ../sysdig/scripts
+	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi
+	docker run -i --rm --name ol7-build -v $BASEDIR:/build/probe ol7-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME OL7-UEK
+}
+
+function AmazonLinux_builder_build_routine {
+	echo Building AmazonLinux
+	DIR=$(dirname $(readlink -f $0))
+	URLS="$($DIR/kernel-crawler.py AmazonLinux)"
+
+	for URL in $URLS
+	do
+		rhel_build $URL
+	done
+}
+
+function AmazonLinux2_builder_build_routine {
+	echo Building AmazonLinux2
+	DIR=$(dirname $(readlink -f $0))
+	URLS="$($DIR/kernel-crawler.py AmazonLinux2)"
+
+	for URL in $URLS
+	do
+		rhel_build $URL
+	done
+}
+
+if [ -z "$EXTRA_BUILD_INSTRU" ]; then
+	Ubuntu_build_routine
+
+	RHEL_build_routine
+
+	Fedora_build_routine
+
+	echo "Building Fedora Atomic in container"
+	build_for_fedoro_atomic_in_container
+
+	CoreOS_build_routine
+
+	boot2docker_build_routine
+
+	Debian_build_routine
+
+	# XXX agent/434 - We need to force a build for certain kernel versions
+	# because they are still in use by some GCE customers but the headers
+	# are no longer available from the mirror. We pass the URL but nothing
+	# needs to be downloaded because we already have it cached on the builder.
+	#
+	# These are no longer available, so disabling for now.
+	#debian_build https://mirrors.kernel.org/debian/pool/main/l/linux/linux-headers-3.16.0-4-amd64_3.16.36-1+deb8u2_amd64.deb
+	#debian_build https://mirrors.kernel.org/debian/pool/main/l/linux/linux-headers-3.16.0-4-amd64_3.16.39-1+deb8u2_amd64.deb
+	
+	#
+	# Oracle RHCK build
+	#
+
+	Oracle_RHCK_build_routine
 
 	#
 	# The UEK builds needs to happen in a UEK environment, so we launch
@@ -577,44 +617,22 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	#
 	# Oracle Linux 6 UEK build
 	#
-	echo "Creating Oracle Linux 6 UEK builder"
-	docker ps -q -f 'name=ol6-build' | xargs --no-run-if-empty docker rm
-	docker build -t ol6-builder:latest -f ../sysdig/scripts/Dockerfile.ol6 --pull ../sysdig/scripts
-	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi
-	docker run -i --rm --name ol6-build -v $BASEDIR:/build/probe ol6-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME OL6-UEK
+	Oracle_Linux_6_UEK_builder_build_routine
 
 	#
 	# Oracle Linux 7 UEK build
 	#
-	echo "Creating Oracle Linux 7 UEK builder"
-	docker ps -q -f 'name=ol7-build' | xargs --no-run-if-empty docker rm
-	docker build -t ol7-builder:latest -f ../sysdig/scripts/Dockerfile.ol7 --pull ../sysdig/scripts
-	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi
-	docker run -i --rm --name ol7-build -v $BASEDIR:/build/probe ol7-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME OL7-UEK
+	Oracle_Linux_7_UEK_builder_build_routine
 
 	#
 	# AmazonLinux build
 	#
-	echo Building AmazonLinux
-	DIR=$(dirname $(readlink -f $0))
-	URLS="$($DIR/kernel-crawler.py AmazonLinux)"
-
-	for URL in $URLS
-	do
-		rhel_build $URL
-	done
+	AmazonLinux_builder_build_routine
 
 	#
 	# AmazonLinux2 build
 	#
-	echo Building AmazonLinux2
-	DIR=$(dirname $(readlink -f $0))
-	URLS="$($DIR/kernel-crawler.py AmazonLinux2)"
-
-	for URL in $URLS
-	do
-		rhel_build $URL
-	done
+	AmazonLinux2_builder_build_routine
 
 	#
 	# Upload modules
@@ -626,6 +644,26 @@ if [ -z "$EXTRA_BUILD_INSTRU" ]; then
 	echo "Success."
 elif [ "Ubuntu" = "$EXTRA_BUILD_INSTRU" ]; then
 	Ubuntu_build_routine
+elif [ "RHEL" = "$EXTRA_BUILD_INSTRU" ]; then
+	RHEL_build_routine
+elif [ "Fedora" = "$EXTRA_BUILD_INSTRU" ]; then
+	Fedora_build_routine
+elif [ "CoreOS" = "$EXTRA_BUILD_INSTRU" ]; then
+	CoreOS_build_routine
+elif [ "boot2docker" = "$EXTRA_BUILD_INSTRU" ]; then
+	boot2docker_build_routine
+elif [ "Debian" = "$EXTRA_BUILD_INSTRU" ]; then
+	Debian_build_routine
+elif [ "Oracle_RHCK" = "$EXTRA_BUILD_INSTRU" ]; then
+	Oracle_RHCK_build_routine
+elif [ "Oracle_Linux_6_UEK" = "$EXTRA_BUILD_INSTRU" ]; then
+	Oracle_Linux_6_UEK_builder_build_routine
+elif [ "Oracle_Linux_7_UEK" = "$EXTRA_BUILD_INSTRU" ]; then
+	Oracle_Linux_7_UEK_builder_build_routine
+elif [ "AmazonLinux" = "$EXTRA_BUILD_INSTRU" ]; then
+	AmazonLinux_builder_build_routine
+elif [ "AmazonLinux2" = "$EXTRA_BUILD_INSTRU" ]; then
+	AmazonLinux2_builder_build_routine
 elif [ "CONTAINER-Fedora-Atomic" = "$EXTRA_BUILD_INSTRU" ]; then
 	build_for_fedoro_atomic_in_container
 elif [ "Fedora-Atomic" = "$EXTRA_BUILD_INSTRU" ]; then
