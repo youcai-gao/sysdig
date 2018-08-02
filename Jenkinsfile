@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'sysdig-probe-builder' }
+    agent { label 'probe-builder-test' }
     stages {
         stage ('preparation') {
             steps {
