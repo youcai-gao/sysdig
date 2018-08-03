@@ -28,7 +28,7 @@ pipeline {
                     "debian" 		    : { sh 'mkdir -p probe/debian        && cd probe/debian        && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Debian' },
                     "rhel"   		    : { sh 'mkdir -p probe/rhel          && cd probe/rhel          && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable RHEL' },
                     "fedora" 	        : { sh 'mkdir -p probe/fedora        && cd probe/fedora        && docker run -i --rm --name fedora-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Fedora' },
-                    "coreos" 		    : { sh 'mkdir -p probe/coreos        && cd probe/coreos        && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable CoreOS' },
+             //       "coreos" 		    : { sh 'mkdir -p probe/coreos        && cd probe/coreos        && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable CoreOS' },
                     "boot2docker" 	    : { sh 'mkdir -p probe/boot2docker   && cd probe/boot2docker   && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable boot2docker' },
             //        "oracle_rhck" 	    : { sh 'mkdir -p probe/oracle_rhck   && cd probe/oracle_rhck   && docker run -i --rm --name oracle-rhck-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Oracle_RHCK' },
                     "oracle_rhck" 	    : { sh 'mkdir -p probe/oracle_rhck   && cd probe/oracle_rhck   && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Oracle_RHCK' },
