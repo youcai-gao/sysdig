@@ -26,15 +26,15 @@ pipeline {
                     "fedora-atomic" 	: { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Fedora-Atomic' },
                     "ubuntu" 		    : { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable Ubuntu' },
                     //"debian" 		: { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable Debian' },
-                    "rhel"   		    : { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable RHEL' },
-                    "fedora" 	        : { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Fedora' },
+                    "rhel"   		    : { sh 'cd probe && docker run -i --rm --name rhel-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable RHEL' },
+                    "fedora" 	        : { sh 'cd probe && docker run -i --rm --name fedora-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Fedora' },
                     //"coreos" 		: { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable CoreOS' },
                     //"boot2docker" 	: { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable boot2docker' },
-                    "oracle_rhck" 	    : { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Oracle_RHCK' },
+                    "oracle_rhck" 	    : { sh 'cd probe && docker run -i --rm --name oracle-rhck-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable Oracle_RHCK' },
                     "oracle_linux6_uek" : { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable Oracle_Linux_6_UEK' },
                     "oracle_linux7_uek" : { sh 'cd probe && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe 0.22.0 stable Oracle_Linux_7_UEK' },
-                    "amazon_linux" 	    : { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable AmazonLinux' },
-                    "amazon_linux2" 	: { sh 'cd probe && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable AmazonLinux2' },
+                    "amazon_linux" 	    : { sh 'cd probe && docker run -i --rm --name amazon-linux-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable AmazonLinux' },
+                    "amazon_linux2" 	: { sh 'cd probe && docker run -i --rm --name amazon-linux2-build -v ${PWD}:/build/probe fedora-builder sysdig-probe 0.22.0 stable AmazonLinux2' },
                 )
             }
         }
