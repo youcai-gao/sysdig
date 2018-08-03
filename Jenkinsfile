@@ -48,6 +48,7 @@ pipeline {
                 sh 'pwd -P'
 		sh 'echo workspace = $WORKSPACE'
                 sh 'df -h'
+		sh 'find probe -name "*.ko"'
                 sh 'ls -l probe/output/'
 		build job: "test-publish-probe-modules", propagate: false, wait: false, parameters: [ string(name: 'WDIR', value: "${WORKSPACE}") ]
 		sh ' echo probe modules published'
