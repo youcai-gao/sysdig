@@ -126,6 +126,7 @@ function coreos_build_old {
 
 	if [ ! -f config_orig ]; then
 		wget --timeout=${URL_TIMEOUT} --tries=${RETRY} ${VERSION_URL}coreos_developer_container.bin.bz2
+		rm -f coreos_developer_container.bin
 		bunzip2 coreos_developer_container.bin.bz2
 		sudo kpartx -asv coreos_developer_container.bin
 		LOOPDEV=$(sudo kpartx -asv coreos_developer_container.bin | cut -d\  -f 3)
@@ -183,6 +184,7 @@ function coreos_build_new {
 
 	if [ ! -f coreos_developer_container.bin ]; then
 		wget --timeout=${URL_TIMEOUT} --tries=${RETRY} ${VERSION_URL}coreos_developer_container.bin.bz2
+		rm -f coreos_developer_container.bin
 		bunzip2 coreos_developer_container.bin.bz2
 	fi
 
