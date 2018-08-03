@@ -32,8 +32,8 @@ pipeline {
                     "boot2docker" 	    : { sh 'mkdir -p probe/boot2docker   && cd probe/boot2docker   && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable boot2docker' },
             //        "oracle_rhck" 	    : { sh 'mkdir -p probe/oracle_rhck   && cd probe/oracle_rhck   && docker run -i --rm --name oracle-rhck-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Oracle_RHCK' },
                     "oracle_rhck" 	    : { sh 'mkdir -p probe/oracle_rhck   && cd probe/oracle_rhck   && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Oracle_RHCK' },
-                    "oracle_linux6_uek" : { sh 'mkdir -p probe/oracle_linux6_uek && cd probe/oracle_linux6_uek && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Oracle_Linux_6_UEK' },
-                    "oracle_linux7_uek" : { sh 'mkdir -p probe/oracle_linux7_uek && cd probe/oracle_linux7_uek && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Oracle_Linux_7_UEK' },
+                    "oracle_linux6_uek" : { sh 'mkdir -p probe               && cd probe               && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Oracle_Linux_6_UEK' },
+                    "oracle_linux7_uek" : { sh 'mkdir -p probe               && cd probe               && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Oracle_Linux_7_UEK' },
                     "amazon_linux" 	    : { sh 'mkdir -p probe/amazon_linux  && cd probe/amazon_linux  && docker run -i --rm --name amazon-linux-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable AmazonLinux' },
                     "amazon_linux2" 	: { sh 'mkdir -p probe/amazon_linux2 && cd probe/amazon_linux2 && docker run -i --rm --name amazon-linux2-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable AmazonLinux2' },
                 )
