@@ -26,7 +26,7 @@ pipeline {
                     "fedora-atomic" 	: { sh 'mkdir -p probe/fedora_atomic && cd probe/fedora_atomic && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Fedora-Atomic' },
                     "ubuntu" 		    : { sh 'mkdir -p probe/ubuntu        && cd probe/ubuntu        && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Ubuntu' },
                     "debian" 		    : { sh 'mkdir -p probe/debian        && cd probe/debian        && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Debian' },
-                    "rhel"   		    : { sh 'mkdir -p probe/rhel          && cd probe/rhel          && docker run -i --rm --name rhel-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable RHEL' },
+                    "rhel"   		    : { sh 'mkdir -p probe/rhel          && cd probe/rhel          && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable RHEL' },
                     "fedora" 	        : { sh 'mkdir -p probe/fedora        && cd probe/fedora        && docker run -i --rm --name fedora-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Fedora' },
                     "coreos" 		    : { sh 'mkdir -p probe/coreos        && cd probe/coreos        && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable CoreOS' },
                     "boot2docker" 	    : { sh 'mkdir -p probe/boot2docker   && cd probe/boot2docker   && bash -x ../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable boot2docker' },
