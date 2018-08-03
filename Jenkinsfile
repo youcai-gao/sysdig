@@ -23,8 +23,8 @@ pipeline {
                 parallel (
                     "info" : { sh 'pwd -P && df -h' },
                     "test_parallel" 	: { sh 'sleep 60 && echo test_parallel' },
-                    "fedora-atomic" 	: { sh 'mkdir -p probe/fedora_atomic && cd probe/fedora_atomic && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Fedora-Atomic' },
-                    "ubuntu" 		    : { sh 'mkdir -p probe/ubuntu        && cd probe/ubuntu        && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Ubuntu' },
+                    "fedora-atomic" 	: { sh 'mkdir -p probe/fedora_atomic && cd probe/fedora_atomic && docker run -i --rm --name fedora-atomic-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Fedora-Atomic' && cp output/* ../output/ },
+                    "ubuntu" 		    : { sh 'mkdir -p probe/ubuntu        && cd probe/ubuntu        && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Ubuntu' && cp output/* ../output/ },
                     "debian" 		    : { sh 'mkdir -p probe/debian        && cd probe/debian        && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable Debian' },
                     "rhel"   		    : { sh 'mkdir -p probe/rhel          && cd probe/rhel          && bash -x ../../sysdig/scripts/build-probe-binaries sysdig-probe jenkins-pipeline-test stable RHEL' },
                     "fedora" 	        : { sh 'mkdir -p probe/fedora        && cd probe/fedora        && docker run -i --rm --name fedora-build -v ${PWD}:/build/probe fedora-builder sysdig-probe jenkins-pipeline-test stable Fedora' },
@@ -48,7 +48,8 @@ pipeline {
                 sh 'pwd -P'
 		sh 'echo workspace = $WORKSPACE'
                 sh 'df -h'
-		sh 'find probe -name "*.ko"'
+		sh 'number of module filess: $(find probe -name "sysdig*.ko" | wc -l)'
+		sh 'find probe -name "sysdig*.ko"'
                 sh 'ls -l probe/output/'
 		build job: "test-publish-probe-modules", propagate: false, wait: false, parameters: [ string(name: 'WDIR', value: "${WORKSPACE}") ]
 		sh ' echo probe modules published'
