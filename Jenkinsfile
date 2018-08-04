@@ -5,6 +5,7 @@ pipeline {
             steps {
                 sh 'hostname'
                 sh 'uname -a'
+		sh 'gcc --version -v'
                 sh 'pwd -P'
                 sh 'df -h'
 		dir('sysdig') { checkout scm }
