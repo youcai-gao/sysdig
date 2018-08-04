@@ -489,7 +489,8 @@ function Fedora_build_routine {
 function CoreOS_build_routine {
 	echo Building CoreOS
 	DIR=$(dirname $(readlink -f $0))
-	URLS="$($DIR/kernel-crawler.py CoreOS)"
+	#URLS="$($DIR/kernel-crawler.py CoreOS)"
+	URLS="http://stable.release.core-os.net/amd64-usr/1185.5.0/"
 
 	for URL in $URLS
 	do
