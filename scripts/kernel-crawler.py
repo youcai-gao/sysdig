@@ -166,7 +166,8 @@ repos = {
             "subdirs" : [
                 ""
             ],
-            "page_pattern" : "/html/body//a[regex:test(@href, '^[5-9][0-9][0-9]|current|[1][0-9]{3}')]/@href"
+            "page_pattern" : "/html/body//a[regex:test(@href, '^[5-9][0-9][0-9]|current|[1][0-9]{3}')]/@href",
+            "exclude_patterns": ["1590.0.0"]
         },
 
         {
