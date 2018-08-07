@@ -16,7 +16,7 @@ pipeline {
                 sh 'sysdig/scripts/build-builder-containers.sh'
                 sh 'docker images'
                 sh 'docker ps'
-                sh 'mkdir -p probe'
+                sh 'mkdir -p probe/output'
             }
         }
 
