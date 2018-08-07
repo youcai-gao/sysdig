@@ -2,7 +2,7 @@
 #
 # This script builds containers of kernel module builder, which is used to 
 # compile the sysdig-probe and/or other probe modules.
-# Generally, one build containner for one family of linux distrio.
+# Generally, one build container for one family of linux distro.
 #
 
 SCRIPT_PATH="$(cd $(dirname ${BASH_SOURCE[0]} ) && pwd -P)"

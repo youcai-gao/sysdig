@@ -5,6 +5,7 @@
 # Ideally, the community should expand this stuff with better support
 #
 set -euo pipefail
+set -x
 
 #
 # For continuous integration log purposes, wget prints its own output to stderr
@@ -20,6 +21,8 @@ BASEDIR=$(pwd)
 ARCH=$(uname -m)
 URL_TIMEOUT=300
 RETRY=10
+
+SCRIPT_PATH="$(cd $(dirname ${BASH_SOURCE[0]} ) && pwd -P)"
 
 if [ $# -eq 4 ]; then
 	EXTRA_BUILD_INSTRU=$4
@@ -108,7 +111,7 @@ function build_probe {
 
 function build_for_fedoro_atomic_in_container {
 	echo "Creating Fedora-Atomic builder"
-	docker build -t fedora-builder:latest -f ../sysdig/scripts/Dockerfiles/Dockerfile.fedora --pull ../sysdig/scripts
+	docker build -t fedora-builder:latest -f ${SCRIPT_PATH}/Dockerfiles/Dockerfile.fedora --pull ${SCRIPT_PATH}
 	docker run -i --rm --name fedora-atomic-build -v $BASEDIR:/build/probe fedora-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME Fedora-Atomic
 	echo "Done with building Fedora Atomic modules ($PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME) in container"
 }
@@ -544,7 +547,7 @@ function Oracle_RHCK_build_routine {
 function Oracle_Linux_6_UEK_builder_build_routine {
 	echo "Creating Oracle Linux 6 UEK builder"
 	docker ps -q -f 'name=ol6-build' | xargs --no-run-if-empty docker rm
-	docker build -t ol6-builder:latest -f ../sysdig/scripts/Dockerfile.ol6 --pull ../sysdig/scripts
+	docker build -t ol6-builder:latest -f ${SCRIPT_PATH}/Dockerfile.ol6 --pull ${SCRIPT_PATH}
 	#docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 	docker run -i --rm --name ol6-build -v $BASEDIR:/build/probe ol6-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME OL6-UEK
 }
@@ -552,7 +555,7 @@ function Oracle_Linux_6_UEK_builder_build_routine {
 function Oracle_Linux_7_UEK_builder_build_routine {
 	echo "Creating Oracle Linux 7 UEK builder"
 	docker ps -q -f 'name=ol7-build' | xargs --no-run-if-empty docker rm
-	docker build -t ol7-builder:latest -f ../sysdig/scripts/Dockerfile.ol7 --pull ../sysdig/scripts
+	docker build -t ol7-builder:latest -f ${SCRIPT_PATH}/Dockerfile.ol7 --pull ${SCRIPT_PATH}
 	#docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 	docker run -i --rm --name ol7-build -v $BASEDIR:/build/probe ol7-builder $PROBE_NAME $PROBE_VERSION $REPOSITORY_NAME OL7-UEK
 }
