@@ -59,6 +59,7 @@ void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_
 #include <netdb.h>
 #endif
 
+using json = nlohmann::json;
 
 extern sinsp_filter_check_list g_filterlist;
 
@@ -550,7 +551,7 @@ void sinsp_filter_check::set_inspector(sinsp* inspector)
 	m_inspector = inspector;
 }
 
-Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filtercheck_field_info* finfo, uint32_t len)
+json sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filtercheck_field_info* finfo, uint32_t len)
 {
 	ASSERT(rawval != NULL);
 	ASSERT(finfo != NULL);
@@ -571,7 +572,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_INT16:
@@ -588,7 +589,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_INT32:
@@ -605,7 +606,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_INT64:
@@ -613,7 +614,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			if(finfo->m_print_format == PF_DEC ||
 			   finfo->m_print_format == PF_ID)
 			{
-		 		return (Json::Value::Int64)*(int64_t *)rawval;
+		 		return *(int64_t *)rawval;
 			}
 			else
 			{
@@ -635,7 +636,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_PORT: // This can be resolved in the future
@@ -653,7 +654,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_UINT32:
@@ -670,7 +671,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_UINT64:
@@ -679,7 +680,7 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			if(finfo->m_print_format == PF_DEC ||
 			   finfo->m_print_format == PF_ID)
 			{
-				return (Json::Value::UInt64)*(uint64_t *)rawval;
+				return *(uint64_t *)rawval;
 			}
 			else if(
 				finfo->m_print_format == PF_10_PADDED_DEC ||
@@ -691,16 +692,16 @@ Json::Value sinsp_filter_check::rawval_to_json(uint8_t* rawval, const filterchec
 			else
 			{
 				ASSERT(false);
-				return Json::nullValue;
+				return nullptr;
 			}
 
 		case PT_SOCKADDR:
 		case PT_SOCKFAMILY:
 			ASSERT(false);
-			return Json::nullValue;
+			return nullptr;
 
 		case PT_BOOL:
-			return Json::Value((bool)(*(uint32_t*)rawval != 0));
+			return (bool)(*(uint32_t*)rawval != 0);
 
 		case PT_CHARBUF:
 		case PT_FSPATH:
@@ -997,17 +998,17 @@ char* sinsp_filter_check::tostring(sinsp_evt* evt)
 	return rawval_to_string(rawval, m_field, len);
 }
 
-Json::Value sinsp_filter_check::tojson(sinsp_evt* evt)
+json sinsp_filter_check::tojson(sinsp_evt* evt)
 {
 	uint32_t len;
-	Json::Value jsonval = extract_as_js(evt, &len);
+	json jsonval = extract_as_js(evt, &len);
 
-	if(jsonval == Json::nullValue)
+	if(jsonval.is_null())
 	{
 		uint8_t* rawval = extract(evt, &len);
 		if(rawval == NULL)
 		{
-			return Json::nullValue;
+			return nullptr;
 		}
 		return rawval_to_json(rawval, m_field, len);
 	}

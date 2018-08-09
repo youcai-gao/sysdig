@@ -38,6 +38,8 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #include "ctext.h"
 #include "cursesui.h"
 
+using json = nlohmann::json;
+
 extern int32_t g_csysdig_screen_w;
 extern bool g_filterchecks_force_raw_times;
 
@@ -62,22 +64,22 @@ int do_sleep(DWORD usec)
 ///////////////////////////////////////////////////////////////////////////////
 // json_spy_renderer implementation
 ///////////////////////////////////////////////////////////////////////////////
-json_spy_renderer::json_spy_renderer(sinsp* inspector, 
+json_spy_renderer::json_spy_renderer(sinsp* inspector,
 	sinsp_cursesui* parent,
-	int32_t viz_type, 
-	spy_text_renderer::sysdig_output_type sotype, 
+	int32_t viz_type,
+	spy_text_renderer::sysdig_output_type sotype,
 	bool print_containers,
 	sinsp_evt::param_fmt text_fmt)
 {
 	m_inspector = inspector;
 	m_filter = NULL;
-	m_root = Json::Value(Json::arrayValue);
+	m_root = json::array();
 	m_linecnt = 0;
 
-	m_json_spy_renderer = new spy_text_renderer(inspector, 
+	m_json_spy_renderer = new spy_text_renderer(inspector,
 		parent,
-		viz_type, 
-		sotype, 
+		viz_type,
+		sotype,
 		print_containers,
 		text_fmt);
 }
@@ -108,7 +110,7 @@ void json_spy_renderer::process_event_spy(sinsp_evt* evt, int32_t next_res)
 
 	if(argstr != NULL)
 	{
-		Json::Value line;
+		json line;
 		m_linecnt++;
 
 		ppm_event_flags eflags = evt->get_info_flags();
@@ -156,7 +158,7 @@ void json_spy_renderer::process_event_spy(sinsp_evt* evt, int32_t next_res)
 			}
 		}
 
-		m_root.append(line);
+		m_root.push_back(line);
 	}
 }
 
@@ -202,9 +204,7 @@ void json_spy_renderer::process_event(sinsp_evt* evt, int32_t next_res)
 
 string json_spy_renderer::get_data()
 {
-	Json::FastWriter writer;
-
-	string res = writer.write(m_root);
+	string res = m_root.dump();
 
 	m_root.clear();
 
@@ -570,13 +570,13 @@ void sinsp_cursesui::start(bool is_drilldown, bool is_spy_switch)
 		if(wi->m_type == sinsp_view_info::T_TABLE)
 		{
 			ty = sinsp_table::TT_TABLE;
-			m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns, 
+			m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns,
 				m_output_type, m_json_first_row, m_json_last_row);
 		}
 		else if(wi->m_type == sinsp_view_info::T_LIST)
 		{
 			ty = sinsp_table::TT_LIST;
-			m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns, 
+			m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns,
 				m_output_type, m_json_first_row, m_json_last_row);
 		}
 		else if(wi->m_type == sinsp_view_info::T_SPECTRO)
@@ -588,12 +588,12 @@ void sinsp_cursesui::start(bool is_drilldown, bool is_spy_switch)
 			//
 			if(m_refresh_interval_ns == 2000000000)
 			{
-				m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns / 4, 
+				m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns / 4,
 					m_output_type, m_json_first_row, m_json_last_row);
 			}
 			else
 			{
-				m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns, 
+				m_datatable = new sinsp_table(m_inspector, ty, m_refresh_interval_ns,
 					m_output_type, m_json_first_row, m_json_last_row);
 			}
 		}
@@ -604,7 +604,7 @@ void sinsp_cursesui::start(bool is_drilldown, bool is_spy_switch)
 
 		try
 		{
-			m_datatable->configure(&wi->m_columns, 
+			m_datatable->configure(&wi->m_columns,
 				m_complete_filter,
 				wi->m_use_defaults,
 				m_view_depth);
@@ -668,8 +668,8 @@ void sinsp_cursesui::start(bool is_drilldown, bool is_spy_switch)
 			if(wi != NULL && wi->m_type == sinsp_view_info::T_SPECTRO)
 			{
 				ASSERT(ty == sinsp_table::TT_TABLE);
-				m_spectro = new curses_spectro(this, 
-					m_inspector, 
+				m_spectro = new curses_spectro(this,
+					m_inspector,
 					m_views.at(m_selected_view)->m_id == "spectro_traces");
 				m_viz = NULL;
 				m_chart = m_spectro;
@@ -729,7 +729,7 @@ void sinsp_cursesui::render_header()
 
 	mvaddstr(0, 0, "Viewing:");
 	k += sizeof("Viewing: ") - 1;
- 
+
 	attrset(m_colors[sinsp_cursesui::PROCESS]);
 
 	string vs;
@@ -814,8 +814,8 @@ void sinsp_cursesui::render_header()
 		string wstr = "PAUSED";
 		attrset(m_colors[sinsp_cursesui::LARGE_NUMBER]);
 		mvprintw(0,
-			m_screenw / 2 - wstr.size() / 2, 
-			wstr.c_str());	
+			m_screenw / 2 - wstr.size() / 2,
+			wstr.c_str());
 	}
 
 	//
@@ -835,9 +835,9 @@ void sinsp_cursesui::render_header()
 	k = sizeof("Source: ") - 1;
 
 	attrset(m_colors[sinsp_cursesui::PROCESS]);
-	
+
 	string srcstr;
-	
+
 	if(m_inspector->is_live())
 	{
 		srcstr = "Live System";
@@ -858,7 +858,7 @@ void sinsp_cursesui::render_header()
 			srcstr += " truncated, ";
 		}
 
-		m_timedelta_formatter->set_val(PT_RELTIME, 
+		m_timedelta_formatter->set_val(PT_RELTIME,
 			(uint8_t*)&m_evt_ts_delta,
 			8,
 			0,
@@ -890,7 +890,7 @@ void sinsp_cursesui::render_header()
 	}
 
 	mvaddnstr(1, k, sflt.c_str(), m_screenw - k - 1);
-	
+
 	k += sflt.size();
 	m_filterstring_end_x = k;
 }
@@ -946,15 +946,15 @@ void sinsp_cursesui::draw_bottom_menu(vector<sinsp_menuitem_info>* items, bool i
 
 		attrset(m_colors[PANEL_HIGHLIGHT_FOCUS]);
 		fks = items->at(j).m_desc;
-		
+
 		if(fks.size() < 6)
 		{
 			fks.resize(6, ' ');
 		}
-		
+
 		mvaddnstr(m_screenh - 1, k, fks.c_str(), fks.size());
 		k += fks.size();
-		
+
 		m_mouse_to_key_list.add(sinsp_mouse_to_key_list_entry(startx,
 			m_screenh - 1,
 			k - 1,
@@ -1160,7 +1160,7 @@ void sinsp_cursesui::render_position_info()
 			sprintf(prstr, "%d/%d(0.0%%)%s", (int)pos, (int)totlines, trs.c_str());
 		}
 
-		mvaddstr(m_screenh - 1, 
+		mvaddstr(m_screenh - 1,
 			m_screenw - strlen(prstr),
 			prstr);
 	}
@@ -1309,9 +1309,9 @@ void sinsp_cursesui::populate_view_cols_sidemenu()
 
 	for(auto it : vinfo->m_columns)
 	{
-		if(it.m_name != "NA") 
+		if(it.m_name != "NA")
 		{
-			if(m_sidemenu_sorting_col == k) 
+			if(m_sidemenu_sorting_col == k)
 			{
 				viewlist.push_back(sidemenu_list_entry(it.m_name, k++));
 				continue;
@@ -1379,10 +1379,10 @@ string combine_filters(string flt1, string flt2)
 	return res;
 }
 
-Json::Value sinsp_cursesui::generate_json_info_section()
+json sinsp_cursesui::generate_json_info_section()
 {
-	Json::Value jinfo;
-	Json::Value jlegend;
+	json jinfo;
+	json jlegend;
 
 	sinsp_view_info* wi = NULL;
 
@@ -1429,14 +1429,14 @@ Json::Value sinsp_cursesui::generate_json_info_section()
 
 		for(uint32_t j = 1; j < colnames.size(); j++)
 		{
-			Json::Value jcinfo;
+			json jcinfo;
 
 			jcinfo["name"] = colnames[j];
 			jcinfo["size"] = colsizes[j];
 			jcinfo["type"] = param_type_to_string(m_datatable->m_types->at(j + off));
 			jcinfo["format"] = print_format_to_string(tlegend->at(j).m_print_format);
-			
-			jlegend.append(jcinfo);
+
+			jlegend.push_back(jcinfo);
 		}
 	}
 
@@ -1459,10 +1459,10 @@ void sinsp_cursesui::handle_end_of_sample(sinsp_evt* evt, int32_t next_res)
 
 		sample = m_datatable->get_sample(get_time_delta());
 
-		printf("\"count\": %" PRIu64 ", ", 
+		printf("\"count\": %" PRIu64 ", ",
 			m_datatable->m_json_output_lines_count);
 
-		Json::Value root = generate_json_info_section();
+		json root = generate_json_info_section();
 
 		if(m_views.at(m_selected_view)->m_type == sinsp_view_info::T_TABLE)
 		{
@@ -1474,8 +1474,7 @@ void sinsp_cursesui::handle_end_of_sample(sinsp_evt* evt, int32_t next_res)
 			root["filterTemplate"] = m_complete_filter_noview;
 		}
 
-		Json::FastWriter writer;
-		string jstr = writer.write(root);
+		string jstr = root.dump();
 		printf("\"info\": %s", jstr.substr(0, jstr.size() - 1).c_str());
 
 		printf("}\n");
@@ -1547,7 +1546,7 @@ void sinsp_cursesui::handle_end_of_sample(sinsp_evt* evt, int32_t next_res)
 				}
 			}
 		}
-*/		
+*/
 #endif
 	}
 }
@@ -1589,7 +1588,7 @@ void sinsp_cursesui::create_complete_filter(bool templated)
 		//
 		if(m_selected_view >= 0)
 		{
-			m_complete_filter = combine_filters(m_complete_filter, 
+			m_complete_filter = combine_filters(m_complete_filter,
 				m_views.at(m_selected_view)->get_filter(m_view_depth));
 		}
 	}
@@ -1632,7 +1631,7 @@ void sinsp_cursesui::switch_view(bool is_spy_switch)
 
 			m_sel_hierarchy.push_back(psinfo->m_field, psinfo->m_val,
 				psv->get_key(), psinfo->m_view_filter,
-				m_prev_selected_view, m_selected_view_sidemenu_entry, 
+				m_prev_selected_view, m_selected_view_sidemenu_entry,
 				NULL, psv->m_sortingcol, m_manual_filter, m_is_filter_sysdig,
 				m_datatable->is_sorting_ascending(), false);
 		}
@@ -1640,7 +1639,7 @@ void sinsp_cursesui::switch_view(bool is_spy_switch)
 		{
 			m_sel_hierarchy.push_back("", "",
 				psv->get_key(), "",
-				m_prev_selected_view, m_selected_view_sidemenu_entry, 
+				m_prev_selected_view, m_selected_view_sidemenu_entry,
 				NULL, psv->m_sortingcol, m_manual_filter, m_is_filter_sysdig,
 				m_datatable->is_sorting_ascending(), false);
 		}
@@ -1671,7 +1670,7 @@ void sinsp_cursesui::switch_view(bool is_spy_switch)
 	else
 	{
 		//
-		// When live, also make sure to unpause the viz, otherwise the screen 
+		// When live, also make sure to unpause the viz, otherwise the screen
 		// will stay empty.
 		//
 		if(m_paused)
@@ -1697,7 +1696,7 @@ void sinsp_cursesui::switch_view(bool is_spy_switch)
 
 		delete m_action_sidemenu;
 		m_action_sidemenu = NULL;
-  
+
 		delete m_view_sort_sidemenu;
 		m_view_sort_sidemenu = NULL;
 
@@ -1715,7 +1714,7 @@ void sinsp_cursesui::switch_view(bool is_spy_switch)
 #endif
 }
 
-void sinsp_cursesui::spy_selection(string field, string val, 
+void sinsp_cursesui::spy_selection(string field, string val,
 	sinsp_view_column_info* column_info,
 	bool is_dig)
 {
@@ -1776,10 +1775,10 @@ void sinsp_cursesui::spy_selection(string field, string val,
 		vfilter = "";
 	}
 
-	m_sel_hierarchy.push_back(field, val, column_info, 
+	m_sel_hierarchy.push_back(field, val, column_info,
 		vfilter,
-		m_selected_view, m_selected_view_sidemenu_entry, 
-		&rowkeybak, srtcol, m_manual_filter, m_is_filter_sysdig, 
+		m_selected_view, m_selected_view_sidemenu_entry,
+		&rowkeybak, srtcol, m_manual_filter, m_is_filter_sysdig,
 		m_datatable->is_sorting_ascending(), true);
 
 	if(is_dig)
@@ -1815,7 +1814,7 @@ void sinsp_cursesui::spy_selection(string field, string val,
 }
 
 // returns false if there is no suitable drill down view for this field
-bool sinsp_cursesui::do_drilldown(string field, string val, 
+bool sinsp_cursesui::do_drilldown(string field, string val,
 	sinsp_view_column_info* column_info,
 	uint32_t new_view_num, filtercheck_field_info* info,
 	bool dont_restart)
@@ -1877,9 +1876,9 @@ bool sinsp_cursesui::do_drilldown(string field, string val,
 		vfilter = "";
 	}
 
-	m_sel_hierarchy.push_back(field, val, 
+	m_sel_hierarchy.push_back(field, val,
 		column_info, vfilter,
-		m_selected_view, m_selected_view_sidemenu_entry, 
+		m_selected_view, m_selected_view_sidemenu_entry,
 		&rowkeybak, srtcol, m_manual_filter, m_is_filter_sysdig,
 		m_datatable->is_sorting_ascending(), true);
 
@@ -1946,7 +1945,7 @@ bool sinsp_cursesui::do_drilldown(string field, string val,
 }
 
 // returns false if there is no suitable drill down view for this field
-bool sinsp_cursesui::drilldown(string field, string val, 
+bool sinsp_cursesui::drilldown(string field, string val,
 	sinsp_view_column_info* column_info,
 	filtercheck_field_info* info, bool dont_restart)
 {
@@ -1956,7 +1955,7 @@ bool sinsp_cursesui::drilldown(string field, string val,
 	{
 		if(m_views.at(j)->m_id == m_views.at(m_selected_view)->m_drilldown_target)
 		{
-			return do_drilldown(field, val, column_info, j, info, dont_restart);			
+			return do_drilldown(field, val, column_info, j, info, dont_restart);
 		}
 	}
 
@@ -2067,7 +2066,7 @@ bool sinsp_cursesui::drillup()
 			m_manual_filter = sinfo->m_prev_manual_filter;
 			m_is_filter_sysdig = sinfo->m_prev_is_filter_sysdig;
 		}
-		
+
 		bool is_sorting_ascending = sinfo->m_prev_is_sorting_ascending;
 
 		ASSERT(m_selected_view < (int32_t)m_views.size());
@@ -2178,17 +2177,17 @@ void sinsp_cursesui::print_progress(double progress)
 
 	string wstr = "Processing File";
 	mvprintw(m_screenh / 2,
-		m_screenw / 2 - wstr.size() / 2, 
-		wstr.c_str());	
+		m_screenw / 2 - wstr.size() / 2,
+		wstr.c_str());
 
 	//
-	// Using sprintf because to_string doesn't support setting the precision 
+	// Using sprintf because to_string doesn't support setting the precision
 	//
 	char numbuf[64];
 	sprintf(numbuf, "%.2lf", progress);
 	wstr = "Progress: " + string(numbuf);
 	mvprintw(m_screenh / 2 + 1,
-		m_screenw / 2 - wstr.size() / 2, 
+		m_screenw / 2 - wstr.size() / 2,
 		wstr.c_str());
 
 	refresh();
@@ -2297,8 +2296,8 @@ sysdig_table_action sinsp_cursesui::handle_textbox_input(int ch)
 
 						attrset(m_colors[sinsp_cursesui::FAILED_SEARCH]);
 						mvprintw(m_screenh / 2,
-							m_screenw / 2 - wstr.size() / 2, 
-							wstr.c_str());	
+							m_screenw / 2 - wstr.size() / 2,
+							wstr.c_str());
 
 						//
 						// Restore the cursor
@@ -2329,7 +2328,7 @@ sysdig_table_action sinsp_cursesui::handle_textbox_input(int ch)
 				{
 					if(m_spy_box != NULL)
 					{
-						m_spy_box->scroll_to(m_search_start_x, m_search_start_y); 
+						m_spy_box->scroll_to(m_search_start_x, m_search_start_y);
 					}
 				}
 
@@ -2352,7 +2351,7 @@ sysdig_table_action sinsp_cursesui::handle_textbox_input(int ch)
 					attrset(m_colors[sinsp_cursesui::FAILED_SEARCH]);
 
 					mvprintw(m_screenh / 2,
-						m_screenw / 2 - wstr.size() / 2, 
+						m_screenw / 2 - wstr.size() / 2,
 						wstr.c_str());
 
 					render();
@@ -2425,7 +2424,7 @@ sysdig_table_action sinsp_cursesui::handle_textbox_input(int ch)
 				attrset(m_colors[sinsp_cursesui::FAILED_SEARCH]);
 
 				mvprintw(m_screenh / 2,
-					m_screenw / 2 - wstr.size() / 2, 
+					m_screenw / 2 - wstr.size() / 2,
 					wstr.c_str());
 
 				render();
@@ -2468,7 +2467,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 	//
 	// Avoid parsing keys during file load
 	//
-	if((!m_inspector->is_live()) && !is_eof() && 
+	if((!m_inspector->is_live()) && !is_eof() &&
 		(m_spectro != NULL && !m_spectro->m_scroll_paused))
 	{
 		if(ch != KEY_BACKSPACE &&
@@ -2513,7 +2512,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 		}
 		else if(actn != STA_PARENT_HANDLE)
 		{
-			return actn;			
+			return actn;
 		}
 	}
 
@@ -2575,7 +2574,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 					m_spectro->render(true);
 					m_spectro->render(true);
 
-				}				
+				}
 				render();
 			}
 			else if(ta != STA_PARENT_HANDLE)
@@ -2589,7 +2588,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 			sysdig_table_action ta = m_view_sort_sidemenu->handle_input(ch);
 			if(ta == STA_SWITCH_VIEW || ta == STA_DESTROY_CHILD)
 			{
-				if(ta == STA_SWITCH_VIEW) 
+				if(ta == STA_SWITCH_VIEW)
 				{
 					ASSERT(m_selected_view_sort_sidemenu_entry < get_selected_view()->m_columns.size());
 					m_datatable->set_sorting_col(m_selected_view_sort_sidemenu_entry+1);
@@ -2601,8 +2600,8 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 				m_viz->set_x_start(0);
 				m_viz->recreate_win(m_screenh - 3);
 				m_viz->render(true);
-				render();				
-				if(ta == STA_SWITCH_VIEW) 
+				render();
+				if(ta == STA_SWITCH_VIEW)
 				{
 					return STA_NONE;
 				}
@@ -2719,7 +2718,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 				m_view_sidemenu->set_title("Select View");
 				render();
 
-				m_viewinfo_page = new curses_viewinfo_page(this, 
+				m_viewinfo_page = new curses_viewinfo_page(this,
 					m_selected_view,
 					TABLE_Y_START,
 					VIEW_SIDEMENU_WIDTH,
@@ -2749,7 +2748,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 				}
 				else if(m_spectro)
 				{
-					switch_view(false);					
+					switch_view(false);
 				}
 
 				render();
@@ -2771,7 +2770,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 			{
 				break;
 			}
-			if(m_view_sort_sidemenu == NULL) 
+			if(m_view_sort_sidemenu == NULL)
 			{
 				m_viz->set_x_start(VIEW_SIDEMENU_WIDTH);
 				m_sidemenu_sorting_col = m_datatable->get_sorting_col() -1;
@@ -2879,7 +2878,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 			if(m_action_sidemenu == NULL)
 			{
 				m_viz->set_x_start(ACTION_SIDEMENU_WIDTH);
-				m_action_sidemenu = new curses_table_sidemenu(curses_table_sidemenu::ST_ACTIONS, 
+				m_action_sidemenu = new curses_table_sidemenu(curses_table_sidemenu::ST_ACTIONS,
 					this, m_selected_action_sidemenu_entry, ACTION_SIDEMENU_WIDTH);
 				populate_action_sidemenu();
 				m_action_sidemenu->set_title("Select Action");
@@ -2906,7 +2905,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 			break;
 		case KEY_RESIZE:
 			getmaxyx(stdscr, m_screenh, m_screenw);
-			
+
 			render();
 
 			if(m_spy_box)
@@ -2925,7 +2924,7 @@ sysdig_table_action sinsp_cursesui::handle_input(int ch)
 			{
 				m_spectro->recreate_win(m_screenh - 3);
 				m_spectro->render(true);
-				m_spectro->render(true);				
+				m_spectro->render(true);
 			}
 
 			if(m_viewinfo_page)
@@ -3047,22 +3046,21 @@ bool sinsp_cursesui::handle_stdin_input(bool* res)
 	//
 	// Parse the input
 	//
-	Json::Value root;
-	Json::Reader reader;
-	bool pres = reader.parse(input,
-		root,
-		false);
+	json root;
 
-	if(!pres)
+	try
+	{
+		root = json::parse(input);
+	}
+	catch (json::parse_error& e)
 	{
 		fprintf(stderr, "unable to parse the json input: %s",
-			reader.getFormattedErrorMessages().c_str());
+			e.what().c_str());
 		*res = false;
 		return false;
 	}
 
-	string astr = root["action"].asString();
-	Json::Value args = root["args"];
+	string astr = root["action"];
 
 	sysdig_table_action ta;
 	uint32_t rownum = 0;
@@ -3071,7 +3069,7 @@ bool sinsp_cursesui::handle_stdin_input(bool* res)
 	{
 		ta = STA_SWITCH_VIEW;
 
-		string vname = args["view"].asString();
+		string vname = root["/args/view"_json_pointer];
 
 		m_selected_view = get_viewnum_by_name(vname);
 		if(m_selected_view == -1)
@@ -3085,7 +3083,7 @@ bool sinsp_cursesui::handle_stdin_input(bool* res)
 	{
 		ta = STA_DRILLDOWN;
 
-		rownum = args["rownum"].asInt();
+		rownum = root["/args/rownum"].asInt();
 	}
 	else if(astr == "drillup")
 	{
@@ -3209,7 +3207,7 @@ void sinsp_cursesui::run_action(sinsp_view_action_info* action)
 
 		//
 		// Wait for the enter key
-		// 
+		//
 		while(int c = getch())
 		{
 			if(c == -1)
@@ -3249,7 +3247,7 @@ void sinsp_cursesui::run_action(sinsp_view_action_info* action)
 
 		//
 		// Wait for the enter key
-		// 
+		//
 		while(getch() == -1)
 		{
 			do_sleep(10000);
@@ -3293,7 +3291,7 @@ bool sinsp_cursesui::is_spectro_paused(int input)
 #endif //  NOCURSESUI
 
 //
-// Returns true if the caller should return immediatly after calling us. 
+// Returns true if the caller should return immediatly after calling us.
 // In that case, res is filled with the result.
 //
 bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownumber, bool* res)
@@ -3331,7 +3329,7 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 					if(res.first != NULL)
 					{
 						drilldown(kinfo->get_filter_field(m_view_depth),
-							res.second.c_str(), 
+							res.second.c_str(),
 							kinfo,
 							res.first,
 							false);
@@ -3352,9 +3350,9 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 					if(res.first != NULL)
 					{
 						drilldown(kinfo->get_filter_field(m_view_depth),
-							res.second.c_str(), 
+							res.second.c_str(),
 							kinfo,
-							res.first, 
+							res.first,
 							false);
 					}
 				}
@@ -3370,7 +3368,7 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 			if(res.first != NULL)
 			{
 				drilldown(kinfo->get_filter_field(m_view_depth),
-					res.second.c_str(), 
+					res.second.c_str(),
 					kinfo,
 					res.first,
 					true);
@@ -3381,7 +3379,7 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 		return true;
 	case STA_DRILLUP:
 		drillup();
-		
+
 		*res = false;
 		return true;
 #ifndef NOCURSESUI
@@ -3399,14 +3397,14 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 				auto res = m_datatable->get_row_key_name_and_val(m_viz->m_selct, false);
 				if(res.first != NULL)
 				{
-					spectro_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth), 
+					spectro_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth),
 						res.second.c_str(),
 						get_selected_view()->get_key(),
 						res.first, ta);
 				}
 			}
 		}
-		
+
 		*res = false;
 		return true;
 #endif
@@ -3426,13 +3424,13 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 
 			if(res.first != NULL)
 			{
-				spy_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth), 
+				spy_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth),
 					res.second.c_str(),
 					get_selected_view()->get_key(),
 					false);
 			}
 		}
-		
+
 		*res = false;
 		return true;
 	case STA_DIG:
@@ -3443,7 +3441,7 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 				auto res = m_datatable->get_row_key_name_and_val(m_viz->m_selct, false);
 				if(res.first != NULL)
 				{
-					spy_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth), 
+					spy_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth),
 						res.second.c_str(),
 						get_selected_view()->get_key(),
 						true);
@@ -3461,7 +3459,7 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 					auto res = m_datatable->get_row_key_name_and_val(rownumber, false);
 					if(res.first != NULL)
 					{
-						spy_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth), 
+						spy_selection(get_selected_view()->get_key()->get_filter_field(m_view_depth),
 							res.second.c_str(),
 							get_selected_view()->get_key(),
 							true);
@@ -3469,7 +3467,7 @@ bool sinsp_cursesui::execute_table_action(sysdig_table_action ta, uint32_t rownu
 				}
 			}
 		}
-		
+
 		*res = false;
 		return true;
 	case STA_NONE:

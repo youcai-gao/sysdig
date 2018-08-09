@@ -30,17 +30,15 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #include "dragent_win_hal_public.h"
 #endif
 
-void sinsp_container_info::parse_json_mounts(const Json::Value &mnt_obj, vector<sinsp_container_info::container_mount_info> &mounts)
+using json = nlohmann::json;
+
+void sinsp_container_info::parse_json_mounts(const json &mnt_obj, vector<sinsp_container_info::container_mount_info> &mounts)
 {
-	if(!mnt_obj.isNull() && mnt_obj.isArray())
+	for(auto &mount : mnt_obj)
 	{
-		for(uint32_t i=0; i<mnt_obj.size(); i++)
-		{
-			const Json::Value &mount = mnt_obj[i];
-			mounts.emplace_back(mount["Source"], mount["Destination"],
-					    mount["Mode"], mount["RW"],
-					    mount["Propagation"]);
-		}
+		mounts.emplace_back(mount["Source"], mount["Destination"],
+				    mount["Mode"], mount["RW"],
+				    mount["Propagation"]);
 	}
 }
 
@@ -169,20 +167,23 @@ bool sinsp_container_engine_docker::parse_docker(sinsp_container_manager* manage
 			break;
 	}
 
-	Json::Value root;
-	Json::Reader reader;
-	bool parsingSuccessful = reader.parse(json, root);
-	if(!parsingSuccessful)
+	json root;
+
+	try
+	{
+		root = json::parse(json);
+	}
+	catch (json::parse_error& e)
 	{
 		ASSERT(false);
 		return false;
 	}
 
-	const Json::Value& config_obj = root["Config"];
+	const json& config_obj = root["Config"];
 
-	container->m_image = config_obj["Image"].asString();
+	container->m_image = root["/Config/Image"_json_pointer];
 
-	string imgstr = root["Image"].asString();
+	string imgstr = root["Image"];
 	size_t cpos = imgstr.find(":");
 	if(cpos != string::npos)
 	{
@@ -214,39 +215,46 @@ bool sinsp_container_engine_docker::parse_docker(sinsp_container_manager* manage
 		if(get_docker(manager, "GET /v1.30/images/" + container->m_imageid + "/json?digests=1 HTTP/1.1\r\nHost: docker \r\n\r\n", img_json) == sinsp_docker_response::RESP_OK)
 #endif
 		{
-			Json::Value img_root;
-			if(reader.parse(img_json, img_root))
+			json img_root;
+			try
 			{
-				for(const auto& rdig : img_root["RepoDigests"])
+				img_root = json::parse(img_json);
+			}
+			catch (json::parse_error &e)
+			{
+				ASSERT(false);
+				return false;
+			}
+
+			for(const auto& rdig : img_root["RepoDigests"])
+			{
+				if(rdig.is_string())
 				{
-					if(rdig.isString())
+					string repodigest = rdig;
+					if(container->m_imagerepo.empty())
 					{
-						string repodigest = rdig.asString();
-						if(container->m_imagerepo.empty())
-						{
-							container->m_imagerepo = repodigest.substr(0, repodigest.find("@"));
-						}
-						if(repodigest.find(container->m_imagerepo) != string::npos)
-						{
-							container->m_imagedigest = repodigest.substr(repodigest.find("@")+1);
-							break;
-						}
+						container->m_imagerepo = repodigest.substr(0, repodigest.find("@"));
+					}
+					if(repodigest.find(container->m_imagerepo) != string::npos)
+					{
+						container->m_imagedigest = repodigest.substr(repodigest.find("@")+1);
+						break;
 					}
 				}
-				for(const auto& rtag : img_root["RepoTags"])
+			}
+			for(const auto& rtag : img_root["RepoTags"])
+			{
+				if(rtag.is_string())
 				{
-					if(rtag.isString())
+					string repotag = rtag;
+					if(container->m_imagerepo.empty())
 					{
-						string repotag = rtag.asString();
-						if(container->m_imagerepo.empty())
-						{
-							container->m_imagerepo = repotag.substr(0, repotag.find(":"));
-						}
-						if(repotag.find(container->m_imagerepo) != string::npos)
-						{
-							container->m_imagetag = repotag.substr(repotag.find(":")+1);
-							break;
-						}
+						container->m_imagerepo = repotag.substr(0, repotag.find(":"));
+					}
+					if(repotag.find(container->m_imagerepo) != string::npos)
+					{
+						container->m_imagetag = repotag.substr(repotag.find(":")+1);
+						break;
 					}
 				}
 			}
@@ -257,20 +265,19 @@ bool sinsp_container_engine_docker::parse_docker(sinsp_container_manager* manage
 		container->m_imagetag = "latest";
 	}
 
-	container->m_name = root["Name"].asString();
+	container->m_name = root["Name"];
 
 	if(!container->m_name.empty() && container->m_name[0] == '/')
 	{
 		container->m_name = container->m_name.substr(1);
 	}
 
-	const Json::Value& net_obj = root["NetworkSettings"];
+	const json& net_obj = root["NetworkSettings"];
 
-	string ip = net_obj["IPAddress"].asString();
+	string ip = net_obj["IPAddress"];
 	if(ip.empty())
 	{
-		const Json::Value& hconfig_obj = root["HostConfig"];
-		string net_mode = hconfig_obj["NetworkMode"].asString();
+		string net_mode = root["/HostConfig/NetworkMode"_json_pointer];
 		if(strncmp(net_mode.c_str(), "container:", strlen("container:")) == 0)
 		{
 			std::string container_id = net_mode.substr(net_mode.find(":") + 1);
@@ -299,55 +306,50 @@ bool sinsp_container_engine_docker::parse_docker(sinsp_container_manager* manage
 		container->m_container_ip = ntohl(container->m_container_ip);
 	}
 
-	vector<string> ports = net_obj["Ports"].getMemberNames();
-	for(vector<string>::const_iterator it = ports.begin(); it != ports.end(); ++it)
+	json &ports = net_obj["Ports"];
+	for (json::iterator it = ports.begin(); it != ports.end(); ++it) {
 	{
-		size_t tcp_pos = it->find("/tcp");
+		size_t tcp_pos = it.key().find("/tcp");
 		if(tcp_pos == string::npos)
 		{
 			continue;
 		}
 
-		uint16_t container_port = atoi(it->c_str());
+		uint16_t container_port = stoi(it.key().substr(0, tcp_pos));
 
-		const Json::Value& v = net_obj["Ports"][*it];
-		if(v.isArray())
+		for(auto &addr : it.value())
 		{
-			for(uint32_t j = 0; j < v.size(); ++j)
+			sinsp_container_info::container_port_mapping port_mapping;
+
+			ip = addr["HostIp"];
+			string port = addr["HostPort"];
+
+			if(inet_pton(AF_INET, ip.c_str(), &port_mapping.m_host_ip) == -1)
 			{
-				sinsp_container_info::container_port_mapping port_mapping;
-
-				ip = v[j]["HostIp"].asString();
-				string port = v[j]["HostPort"].asString();
-
-				if(inet_pton(AF_INET, ip.c_str(), &port_mapping.m_host_ip) == -1)
-				{
-					ASSERT(false);
-					continue;
-				}
-				port_mapping.m_host_ip = ntohl(port_mapping.m_host_ip);
-
-				port_mapping.m_container_port = container_port;
-				port_mapping.m_host_port = atoi(port.c_str());
-				container->m_port_mappings.push_back(port_mapping);
+				ASSERT(false);
+				continue;
 			}
+			port_mapping.m_host_ip = ntohl(port_mapping.m_host_ip);
+
+			port_mapping.m_container_port = container_port;
+			port_mapping.m_host_port = atoi(port.c_str());
+			container->m_port_mappings.push_back(port_mapping);
 		}
 	}
 
-	vector<string> labels = config_obj["Labels"].getMemberNames();
-	for(vector<string>::const_iterator it = labels.begin(); it != labels.end(); ++it)
+	json &labels = config_obj["Labels"];
+	for(json::iterator it = labels.begin(); it != labels.end(); ++it)
 	{
-		string val = config_obj["Labels"][*it].asString();
-		container->m_labels[*it] = val;
+		container->m_labels[it.key()] = it.value();
 	}
 
-	const Json::Value& env_vars = config_obj["Env"];
+	const json& env_vars = config_obj["Env"];
 
 	for(const auto& env_var : env_vars)
 	{
-		if(env_var.isString())
+		if(env_var.is_string())
 		{
-			container->m_env.emplace_back(env_var.asString());
+			container->m_env.emplace_back(env_var);
 		}
 	}
 
@@ -356,25 +358,20 @@ bool sinsp_container_engine_docker::parse_docker(sinsp_container_manager* manage
 		g_logger.log("Mesos Docker container: [" + root["Id"].asString() + "], Mesos task ID: [" + container->m_mesos_task_id + ']', sinsp_logger::SEV_DEBUG);
 	}
 
-	const auto& host_config_obj = root["HostConfig"];
-	container->m_memory_limit = host_config_obj["Memory"].asInt64();
-	container->m_swap_limit = host_config_obj["MemorySwap"].asInt64();
-	const auto cpu_shares = host_config_obj["CpuShares"].asInt64();
+	container->m_memory_limit = root["/HostConfig/Memory"_json_pointer];
+	container->m_swap_limit = root["/HostConfig/MemorySwap"_json_pointer];
+	const int64_t cpu_shares = root["/HostConfig/CpuShares"_json_pointer];
 	if(cpu_shares > 0)
 	{
 		container->m_cpu_shares = cpu_shares;
 	}
-	container->m_cpu_quota = host_config_obj["CpuQuota"].asInt64();
-	const auto cpu_period = host_config_obj["CpuPeriod"].asInt64();
+	container->m_cpu_quota = root["/HostConfig/CpuQuota"_json_pointer];
+	const int64_t cpu_period = root["/HostConfig/CpuPeriod"_json_pointer];
 	if(cpu_period > 0)
 	{
 		container->m_cpu_period = cpu_period;
 	}
-	const Json::Value &privileged = host_config_obj["Privileged"];
-	if(!privileged.isNull() && privileged.isBool())
-	{
-		container->m_privileged = privileged.asBool();
-	}
+	container->m_privileged = root["/HostConfig/Privileged"_json_pointer];
 
 	sinsp_container_info::parse_json_mounts(root["Mounts"], container->m_mounts);
 
@@ -414,8 +411,8 @@ bool sinsp_container_engine_docker::resolve(sinsp_container_manager* manager, si
 sinsp_docker_response sinsp_container_engine_docker::get_docker(const sinsp_container_manager* manager, const string& url, string &json)
 {
 	const char* response;
-	bool qdres = wh_query_docker(manager->m_inspector->get_wmi_handle(), 
-		(char*)url.c_str(), 
+	bool qdres = wh_query_docker(manager->m_inspector->get_wmi_handle(),
+		(char*)url.c_str(),
 		&response);
 	if(qdres == false)
 	{
@@ -655,7 +652,7 @@ bool sinsp_container_engine_libvirt_lxc::resolve(sinsp_container_manager* manage
 
 	if (!match(tinfo, &container_info))
 		return false;
-	
+
 	tinfo->m_container_id = container_info.m_id;
 	if (!manager->container_exists(container_info.m_id))
 	{
@@ -701,7 +698,7 @@ bool sinsp_container_engine_mesos::resolve(sinsp_container_manager* manager, sin
 
 	if (!match(tinfo, &container_info))
 		return false;
-	
+
 	tinfo->m_container_id = container_info.m_id;
 	if (!manager->container_exists(container_info.m_id))
 	{
@@ -957,35 +954,52 @@ bool sinsp_container_engine_rkt::resolve(sinsp_container_manager* manager, sinsp
 
 bool sinsp_container_engine_rkt::parse_rkt(sinsp_container_info *container, const string &podid, const string &appname)
 {
-	bool ret = false;
-	Json::Reader reader;
-	Json::Value jroot;
+	json jroot;
 
 	char image_manifest_path[SCAP_MAX_PATH_SIZE];
 	snprintf(image_manifest_path, sizeof(image_manifest_path), "%s/var/lib/rkt/pods/run/%s/appsinfo/%s/manifest", scap_get_host_root(), podid.c_str(), appname.c_str());
 	ifstream image_manifest(image_manifest_path);
-	if(reader.parse(image_manifest, jroot))
+
+	try
 	{
-		container->m_image = jroot["name"].asString();
-		for(const auto& label_entry : jroot["labels"])
-		{
-			container->m_labels.emplace(label_entry["name"].asString(), label_entry["value"].asString());
-		}
-		auto version_label_it = container->m_labels.find("version");
-		if(version_label_it != container->m_labels.end())
-		{
-			container->m_image += ":" + version_label_it->second;
-		}
-		ret = true;
+		jroot = json::parse(image_manifest);
+	}
+	catch (json::parse_error &e)
+	{
+		ASSERT(false);
+		return false;
+	}
+
+	container->m_image = jroot["name"];
+	for(const auto& label_entry : jroot["labels"])
+	{
+		container->m_labels.emplace(label_entry["name"], label_entry["value"]);
+	}
+	auto version_label_it = container->m_labels.find("version");
+	if(version_label_it != container->m_labels.end())
+	{
+		container->m_image += ":" + version_label_it->second;
 	}
 
 	char net_info_path[SCAP_MAX_PATH_SIZE];
 	snprintf(net_info_path, sizeof(net_info_path), "%s/var/lib/rkt/pods/run/%s/net-info.json", scap_get_host_root(), podid.c_str());
 	ifstream net_info(net_info_path);
-	if(reader.parse(net_info, jroot) && jroot.size() > 0)
+	bool parsed;
+
+	try
+	{
+		jroot = json::parse(net_info);
+		parsed = true;
+	}
+	catch (json::parse_error &e)
+	{
+		parsed = false;
+	}
+	if(parsed && jroot.size() > 0)
 	{
 		const auto& first_net = jroot[0];
-		if(inet_pton(AF_INET, first_net["ip"].asCString(), &container->m_container_ip) == -1)
+		std::string ip = first_net["ip"];
+		if(inet_pton(AF_INET, ip.c_str(), &container->m_container_ip) == -1)
 		{
 			ASSERT(false);
 		}
@@ -996,23 +1010,33 @@ bool sinsp_container_engine_rkt::parse_rkt(sinsp_container_info *container, cons
 	snprintf(pod_manifest_path, sizeof(pod_manifest_path), "%s/var/lib/rkt/pods/run/%s/pod", scap_get_host_root(), podid.c_str());
 	ifstream pod_manifest(pod_manifest_path);
 	unordered_map<string, uint32_t> image_ports;
-	if(reader.parse(pod_manifest, jroot) && jroot.size() > 0)
+	try
+	{
+		jroot = json::parse(pod_manifest);
+		parsed = true;
+	}
+	catch (json::parse_error &e)
+	{
+		parsed = false;
+	}
+
+	if(parsed && jroot.size() > 0)
 	{
 		for(const auto& japp : jroot["apps"])
 		{
-			if (japp["name"].asString() == appname)
+			if (japp["name"] == appname)
 			{
 				for(const auto& image_port : japp["app"]["ports"])
 				{
-					image_ports[image_port["name"].asString()] = image_port["port"].asUInt();
+					image_ports[image_port["name"]] = image_port["port"];
 				}
 				break;
 			}
 		}
 		for(const auto& jport : jroot["ports"])
 		{
-			auto host_port = jport["hostPort"].asUInt();
-			auto container_port_it = image_ports.find(jport["name"].asString());
+			uint32_t host_port = jport["hostPort"];
+			auto container_port_it = image_ports.find(jport["name"]);
 			if(host_port > 0 && container_port_it != image_ports.end())
 			{
 				sinsp_container_info::container_port_mapping port_mapping;
@@ -1130,45 +1154,46 @@ bool sinsp_container_manager::resolve_container(sinsp_threadinfo* tinfo, bool qu
 
 string sinsp_container_manager::container_to_json(const sinsp_container_info& container_info)
 {
-	Json::Value obj;
-	Json::Value& container = obj["container"];
-	container["id"] = container_info.m_id;
-	container["type"] = container_info.m_type;
-	container["name"] = container_info.m_name;
-	container["image"] = container_info.m_image;
-	container["imageid"] = container_info.m_imageid;
-	container["imagerepo"] = container_info.m_imagerepo;
-	container["imagetag"] = container_info.m_imagetag;
-	container["imagedigest"] = container_info.m_imagedigest;
-	container["privileged"] = container_info.m_privileged;
-
-	Json::Value mounts = Json::arrayValue;
+	json obj = {
+		{"container", {
+				{"id", container_info.m_id},
+				{"type", container_info.m_type},
+				{"name", container_info.m_name},
+				{"image", container_info.m_image},
+				{"imageid", container_info.m_imageid},
+				{"imagerepo", container_info.m_imagerepo},
+				{"imagetag", container_info.m_imagetag},
+				{"imagedigest", container_info.m_imagedigest},
+				{"privileged", container_info.m_privileged}
+				{"mounts", json::array()}
+			}
+		}
+	};
 
 	for (auto &mntinfo : container_info.m_mounts)
 	{
-		Json::Value mount;
+		json mount = {
+			{"Source", mntinfo.m_source},
+			{"Destination", mntinfo.m_dest},
+			{"Mode", mntinfo.m_mode},
+			{"RW", mntinfo.m_rdwr},
+			{"Propagation", mntinfo.m_propagation}
+		};
 
-		mount["Source"] = mntinfo.m_source;
-		mount["Destination"] = mntinfo.m_dest;
-		mount["Mode"] = mntinfo.m_mode;
-		mount["RW"] = mntinfo.m_rdwr;
-		mount["Propagation"] = mntinfo.m_propagation;
-
-		mounts.append(mount);
+		obj["container"]["mounts"].push_back(mount);
 	}
-
-	container["Mounts"] = mounts;
 
 	char addrbuff[100];
 	uint32_t iph = htonl(container_info.m_container_ip);
 	inet_ntop(AF_INET, &iph, addrbuff, sizeof(addrbuff));
-	container["ip"] = addrbuff;
+	obj["container"]["ip"] = addrbuff;
 
 	if(!container_info.m_mesos_task_id.empty())
 	{
-		container["mesos_task_id"] = container_info.m_mesos_task_id;
+		obj["container"]["mesos_task_id"] = container_info.m_mesos_task_id;
 	}
-	return Json::FastWriter().write(obj);
+
+	return obj.dump();
 }
 
 bool sinsp_container_manager::container_to_sinsp_event(const string& json, sinsp_evt* evt)

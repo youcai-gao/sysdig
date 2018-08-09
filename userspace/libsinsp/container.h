@@ -26,6 +26,8 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #include <curl/multi.h>
 #endif
 
+#include <nlohmann/json.h>
+
 enum sinsp_container_type
 {
 	CT_DOCKER = 0,
@@ -73,18 +75,18 @@ public:
 		{
 		}
 
-		container_mount_info(const Json::Value &source, const Json::Value &dest,
-				     const Json::Value &mode, const Json::Value &rw,
-				     const Json::Value &propagation)
+		container_mount_info(const nlohmann::json &source, const nlohmann::json &dest,
+				     const nlohmann::json &mode, const nlohmann::json &rw,
+				     const nlohmann::json &propagation)
 		{
 			get_string_value(source, m_source);
 			get_string_value(dest, m_dest);
 			get_string_value(mode, m_mode);
 			get_string_value(propagation, m_propagation);
 
-			if(!rw.isNull() && rw.isBool())
+			if(!rw.is_null() && rw.is_boolean())
 			{
-				m_rdwr = rw.asBool();
+				m_rdwr = rw;
 			}
 		}
 
@@ -97,11 +99,11 @@ public:
 				m_propagation;
 		}
 
-		inline void get_string_value(const Json::Value &val, std::string &result)
+		inline void get_string_value(const nlohmann::json &val, std::string &result)
 		{
-			if(!val.isNull() && val.isString())
+			if(!val.is_null() && val.is_string())
 			{
-				result = val.asString();
+				result = val;
 			}
 		}
 
@@ -126,7 +128,7 @@ public:
 	{
 	}
 
-	static void parse_json_mounts(const Json::Value &mnt_obj, vector<container_mount_info> &mounts);
+	static void parse_json_mounts(const nlohmann::json &mnt_obj, vector<container_mount_info> &mounts);
 
 	const vector<string>& get_env() const { return m_env; }
 
@@ -256,7 +258,7 @@ public:
 private:
 	string container_to_json(const sinsp_container_info& container_info);
 	bool container_to_sinsp_event(const string& json, sinsp_evt* evt);
-	string get_docker_env(const Json::Value &env_vars, const string &mti);
+	string get_docker_env(const nlohmann::json &env_vars, const string &mti);
 
 	sinsp* m_inspector;
 	unordered_map<string, sinsp_container_info> m_containers;

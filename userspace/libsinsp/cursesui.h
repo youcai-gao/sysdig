@@ -22,6 +22,8 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #endif
 
+#include <nlohmann/json.h>
+
 #define UI_USER_INPUT_CHECK_PERIOD_NS 10000000
 #define VIEW_SIDEMENU_WIDTH 20
 #define ACTION_SIDEMENU_WIDTH 30
@@ -35,15 +37,15 @@ extern sinsp_logger g_logger;
 class sinsp_menuitem_info
 {
 public:
-	enum type 
+	enum type
 	{
 		TABLE = 1,
 		LIST = 2,
 		ALL = TABLE | LIST,
 	};
 
-	sinsp_menuitem_info(string key, 
-		string desc, 
+	sinsp_menuitem_info(string key,
+		string desc,
 		sinsp_menuitem_info::type type,
 		int keyboard_equivalent)
 	{
@@ -62,12 +64,12 @@ public:
 class sinsp_ui_selection_info
 {
 public:
-	sinsp_ui_selection_info(string field, 
+	sinsp_ui_selection_info(string field,
 		string val,
 		sinsp_view_column_info* column_info,
 		string view_filter,
-		uint32_t prev_selected_view, 
-		uint32_t prev_selected_sidemenu_entry, 
+		uint32_t prev_selected_view,
+		uint32_t prev_selected_sidemenu_entry,
 		sinsp_table_field* rowkey,
 		uint32_t prev_sorting_col,
 		string prev_manual_filter,
@@ -93,8 +95,8 @@ public:
 		}
 		else
 		{
-			m_rowkey.m_len = 0;	
-			m_rowkey.m_val = NULL;	
+			m_rowkey.m_len = 0;
+			m_rowkey.m_val = NULL;
 		}
 	}
 
@@ -115,12 +117,12 @@ public:
 class sinsp_ui_selection_hierarchy
 {
 public:
-	void push_back(string field, 
+	void push_back(string field,
 		string val,
 		sinsp_view_column_info* column_info,
 		string view_filter,
-		uint32_t prev_selected_view, 
-		uint32_t prev_selected_sidemenu_entry, 
+		uint32_t prev_selected_view,
+		uint32_t prev_selected_sidemenu_entry,
 		sinsp_table_field* rowkey,
 		uint32_t prev_sorting_col,
 		string prev_manual_filter,
@@ -128,11 +130,11 @@ public:
 		bool prev_is_sorting_ascending,
 		bool is_drilldown)
 	{
-		m_hierarchy.push_back(sinsp_ui_selection_info(field, 
+		m_hierarchy.push_back(sinsp_ui_selection_info(field,
 			val,
 			column_info,
 			view_filter,
-			prev_selected_view, 
+			prev_selected_view,
 			prev_selected_sidemenu_entry,
 			rowkey,
 			prev_sorting_col,
@@ -192,7 +194,7 @@ public:
 					{
 						skip = true;
 					}
-				}	
+				}
 
 				if(!skip)
 				{
@@ -203,7 +205,7 @@ public:
 					res += m_hierarchy[j].m_field;
 					res += "=";
 
-					if(templated && (j == hs - 1)) 
+					if(templated && (j == hs - 1))
 					{
 						res += string("\"") + FILTER_TEMPLATE_MAGIC + "\"";
 					}
@@ -299,11 +301,11 @@ class sinsp_mouse_to_key_list
 public:
 	void add(sinsp_mouse_to_key_list_entry entry)
 	{
-		m_list.push_back(entry);		
+		m_list.push_back(entry);
 	}
 
 	int get_key_from_coordinates(uint32_t x, uint32_t y)
-	{		
+	{
 		for(auto e : m_list)
 		{
 			if(x >= e.m_startx &&
@@ -329,10 +331,10 @@ public:
 class json_spy_renderer
 {
 public:
-	json_spy_renderer(sinsp* inspector, 
+	json_spy_renderer(sinsp* inspector,
 		sinsp_cursesui* parent,
-		int32_t viz_type, 
-		spy_text_renderer::sysdig_output_type sotype, 
+		int32_t viz_type,
+		spy_text_renderer::sysdig_output_type sotype,
 		bool print_containers,
 		sinsp_evt::param_fmt text_fmt);
 
@@ -348,7 +350,7 @@ private:
 
 	spy_text_renderer* m_json_spy_renderer;
 	sinsp* m_inspector;
-	Json::Value m_root;
+	nlohmann::json m_root;
 	sinsp_filter* m_filter;
 	uint64_t m_linecnt;
 };
@@ -430,8 +432,8 @@ public:
 		LAST_COLORELEMENT
 	};
 
-	sinsp_cursesui(sinsp* inspector, string event_source_name, 
-		string cmdline_capture_filter, uint64_t refresh_interval_ns, 
+	sinsp_cursesui(sinsp* inspector, string event_source_name,
+		string cmdline_capture_filter, uint64_t refresh_interval_ns,
 		bool print_containers, sinsp_table::output_type output_type, bool is_mousedrag_available,
 		int32_t json_first_row, int32_t json_last_row, int32_t sorting_col,
 		sinsp_evt::param_fmt json_spy_text_fmt);
@@ -477,10 +479,10 @@ public:
 		{
 			if(m_1st_evt_ts == 0)
 			{
-				m_1st_evt_ts = ts;	
+				m_1st_evt_ts = ts;
 			}
 
-			m_last_evt_ts = ts;	
+			m_last_evt_ts = ts;
 		}
 
 		//
@@ -579,10 +581,10 @@ public:
 		}
 
 		//
-		// We were reading from a file and we reached its end. 
-		// Unless we are in raw mode, we keep looping because we want to handle user events, 
-		// but we stop the processing here. We also make sure to sleep a bit to keep the 
-		// CPU under control. 
+		// We were reading from a file and we reached its end.
+		// Unless we are in raw mode, we keep looping because we want to handle user events,
+		// but we stop the processing here. We also make sure to sleep a bit to keep the
+		// CPU under control.
 		//
 		if(m_eof > 1)
 		{
@@ -620,7 +622,7 @@ public:
 		if(m_json_spy_renderer)
 		{
 			m_json_spy_renderer->process_event(evt, next_res);
-			
+
 			uint64_t evtnum = evt->get_num();
 			if((evtnum - m_last_progress_evt > 2000) || (next_res == SCAP_EOF))
 			{
@@ -645,7 +647,7 @@ public:
 			}
 
 			//
-			// Check if this the end of the capture file, and if yes take note of that 
+			// Check if this the end of the capture file, and if yes take note of that
 			//
 			if(next_res == SCAP_EOF)
 			{
@@ -692,7 +694,7 @@ public:
 				handle_end_of_sample(evt, next_res);
 
 				//
-				// Check if this the end of the capture file, and if yes take note of that 
+				// Check if this the end of the capture file, and if yes take note of that
 				//
 				if(next_res == SCAP_EOF)
 				{
@@ -742,7 +744,7 @@ public:
 	bool m_is_mousedrag_available;
 
 private:
-	Json::Value generate_json_info_section();
+	nlohmann::json generate_json_info_section();
 	void handle_end_of_sample(sinsp_evt* evt, int32_t next_res);
 	void restart_capture(bool is_spy_switch);
 	void switch_view(bool is_spy_switch);

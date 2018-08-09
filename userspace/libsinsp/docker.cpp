@@ -9,6 +9,8 @@
 #include "docker.h"
 #include "user_event.h"
 
+using json = nlohmann::json;
+
 const std::string docker::DOCKER_SOCKET_FILE = "/var/run/docker.sock";
 
 docker::docker(std::string url,
@@ -230,7 +232,7 @@ void docker::set_event_json(json_ptr_t json, const std::string&)
 }
 
 #ifdef HAS_CAPTURE
-void docker::emit_event(Json::Value& root, std::string type, std::string status, bool send_to_backend)
+void docker::emit_event(json& root, std::string type, std::string status, bool send_to_backend)
 {
 	if(send_to_backend)
 	{
@@ -261,29 +263,22 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 		severity = it->second;
 	}
 	g_logger.log("Docker EVENT: severity for " + status + '=' + std::to_string(severity - sinsp_logger::SEV_EVT_MIN), sinsp_logger::SEV_DEBUG);
-	uint64_t epoch_time_s = static_cast<uint64_t>(~0);
-	Json::Value t = root["time"];
-	if(!t.isNull() && t.isConvertibleTo(Json::uintValue))
-	{
-		epoch_time_s = t.asUInt64();
-	}
+	uint64_t epoch_time_s = root.value("time", static_cast<uint64_t>(~0));
 	g_logger.log("Docker EVENT: name=" + event_name + ", id=" + id +
 				", status=" + status + ", time=" + std::to_string(epoch_time_s),
 				sinsp_logger::SEV_DEBUG);
 	if(m_verbose)
 	{
-		std::cout << Json::FastWriter().write(root) << std::endl;
+		std::cout << root.dump() << std::endl;
 	}
 
-	Json::Value no_value = Json::nullValue;
-	const Json::Value& actor = root["Actor"];
-	const Json::Value& attrib = actor.isNull() ? no_value : actor["Attributes"];
-	const Json::Value& img = attrib.isNull() ? no_value : attrib["image"];
-	std::string image;
-	if(!img.isNull() && img.isConvertibleTo(Json::stringValue))
+	try
 	{
-		image = img.asString();
+		image = root["/Actor/Attributes/image"_json_pointer];
 	}
+
+	image = root.value("/Actor/Attributes/image"_json_pointer, "");
+
 	event_scope scope;
 	if(m_machine_id.length())
 	{
@@ -322,9 +317,9 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 	{
 		status.insert(0, "Event: ", 7);
 	}
-	if(!actor.isNull() && actor.isObject())
+	if(!actor.is_null() && actor.is_object())
 	{
-		if(!attrib.isNull() && attrib.isObject())
+		if(!attrib.is_null() && attrib.is_object())
 		{
 			if(!image.empty())
 			{
@@ -336,10 +331,10 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 			}
 			for(const auto attribute_name : {"name", "exitCode", "signal"})
 			{
-				const Json::Value& name = attrib[attribute_name];
-				if(!name.isNull() && name.isConvertibleTo(Json::stringValue))
+				auto it = attrib.find(attribute_name);
+				if(it != attrib.end() && it->is_primitive())
 				{
-					status.append("; ").append(attribute_name).append(": ").append(name.asString());
+					status.append("; ").append(attribute_name).append(": ").append(*it);
 				}
 			}
 		}
@@ -381,7 +376,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 			g_logger.log("Docker EVENT: status not supported: " + status, sinsp_logger::SEV_ERROR);
 			if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			{
-				g_logger.log(Json::FastWriter().write(root), sinsp_logger::SEV_DEBUG);
+				g_logger.log(root.dump(), sinsp_logger::SEV_DEBUG);
 			}
 		}
 	}
@@ -392,7 +387,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 	g_logger.log(std::move(evt), (severity_t)sinsp_logger::SEV_EVT_MDUMP);
 }
 
-void docker::handle_event(Json::Value&& root)
+void docker::handle_event(json&& root)
 {
 	if(m_event_filter && (m_event_counter < sinsp_user_event::max_events_per_cycle()))
 	{
@@ -472,7 +467,7 @@ void docker::handle_event(Json::Value&& root)
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 			{
 				g_logger.log("Docker EVENT: status not permitted by filter: " + type +':' + status, sinsp_logger::SEV_TRACE);
-				g_logger.log(Json::FastWriter().write(root), sinsp_logger::SEV_TRACE);
+				g_logger.log(root.dump(), sinsp_logger::SEV_TRACE);
 			}
 		}
 		m_event_limit_exceeded = false;

@@ -28,6 +28,8 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef HAS_FILTERING
 extern sinsp_filter_check_list g_filterlist;
 
+using json = nlohmann::json;
+
 sinsp_evt_formatter::sinsp_evt_formatter(sinsp* inspector, const string& fmt)
 {
 	m_inspector = inspector;
@@ -221,14 +223,14 @@ bool sinsp_evt_formatter::tostring(sinsp_evt* evt, OUT string* res)
 		   || m_inspector->get_buffer_format() == sinsp_evt::PF_JSONHEXASCII
 		   || m_inspector->get_buffer_format() == sinsp_evt::PF_JSONBASE64)
 		{
-			Json::Value json_value = m_tokens[j].second->tojson(evt);
+			json json_value = m_tokens[j].second->tojson(evt);
 
 			if(retval == false)
 			{
 				continue;
 			}
 
-			if(json_value == Json::nullValue && m_require_all_values)
+			if(json_value.is_null() && m_require_all_values)
 			{
 				retval = false;
 				continue;

@@ -46,6 +46,8 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #include "cursestable.h"
 #include "cursesui.h"
 
+using json = nlohmann::json;
+
 #define MOUSE_CAPABLE_TERM "xterm-1003"
 #define MOUSE_CAPABLE_TERM_COMPAT "xterm-1002"
 
@@ -187,13 +189,13 @@ static void add_chisel_dirs(sinsp* inspector)
 static void print_views(sinsp_view_manager* view_manager)
 {
 	Json::FastWriter writer;
-	Json::Value root;
+	json root;
 
 	vector<sinsp_view_info>* vlist = view_manager->get_views();
 
 	for(auto it = vlist->begin(); it != vlist->end(); ++it)
 	{
-		Json::Value jv;
+		json jv;
 		sinsp_view_info& vinfo = *it;
 
 		jv["id"] = vinfo.m_id;

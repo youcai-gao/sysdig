@@ -49,6 +49,7 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 bool should_drop(sinsp_evt *evt);
 #endif
 
+using json = nlohmann::json;
 extern sinsp_protodecoder_list g_decoderlist;
 extern sinsp_evttables g_infotables;
 
@@ -4301,93 +4302,94 @@ void sinsp_parser::parse_container_json_evt(sinsp_evt *evt)
 	sinsp_evt_param *parinfo = evt->get_param(0);
 	ASSERT(parinfo);
 	ASSERT(parinfo->m_len > 0);
-	std::string json(parinfo->m_val, parinfo->m_len);
-	g_logger.log(json, sinsp_logger::SEV_DEBUG);
+	std::string jsons(parinfo->m_val, parinfo->m_len);
+	g_logger.log(jsons, sinsp_logger::SEV_DEBUG);
 	ASSERT(m_inspector);
-	Json::Value root;
-	if(Json::Reader().parse(json, root))
+	json root;
+	try
 	{
-		sinsp_container_info container_info;
-		const Json::Value& container = root["container"];
-		const Json::Value& id = container["id"];
-		if(!id.isNull() && id.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_id = id.asString();
-		}
-		const Json::Value& type = container["type"];
-		if(!type.isNull() && type.isConvertibleTo(Json::uintValue))
-		{
-			container_info.m_type = static_cast<sinsp_container_type>(type.asUInt());
-		}
-		const Json::Value& name = container["name"];
-		if(!name.isNull() && name.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_name = name.asString();
-		}
-		const Json::Value& image = container["image"];
-		if(!image.isNull() && image.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_image = image.asString();
-		}
-		const Json::Value& imageid = container["imageid"];
-		if(!imageid.isNull() && imageid.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_imageid = imageid.asString();
-		}
-		const Json::Value& imagerepo = container["imagerepo"];
-		if(!imagerepo.isNull() && imagerepo.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_imagerepo = imagerepo.asString();
-		}
-		const Json::Value& imagetag = container["imagetag"];
-		if(!imagetag.isNull() && imagetag.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_imagetag = imagetag.asString();
-		}
-		const Json::Value& imagedigest = container["imagedigest"];
-		if(!imagedigest.isNull() && imagedigest.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_imagedigest = imagedigest.asString();
-		}
-		const Json::Value& privileged = container["privileged"];
-		if(!privileged.isNull() && privileged.isConvertibleTo(Json::booleanValue))
-		{
-			container_info.m_privileged = privileged.asBool();
-		}
-
-		sinsp_container_info::parse_json_mounts(container["Mounts"], container_info.m_mounts);
-		const Json::Value& contip = container["ip"];
-		if(!contip.isNull() && contip.isConvertibleTo(Json::stringValue))
-		{
-			uint32_t ip;
-
-			if(inet_pton(AF_INET, contip.asString().c_str(), &ip) == -1)
-			{
-				throw sinsp_exception("Invalid 'ip' field while parsing container info: " + json);
-			}
-
-			container_info.m_container_ip = ntohl(ip);
-		}
-		const Json::Value& mesos_task_id = container["mesos_task_id"];
-		if(!mesos_task_id.isNull() && mesos_task_id.isConvertibleTo(Json::stringValue))
-		{
-			container_info.m_mesos_task_id = mesos_task_id.asString();
-		}
-		m_inspector->m_container_manager.add_container(container_info, evt->get_thread_info(true));
-		/*
-		g_logger.log("Container\n-------\nID:" + container_info.m_id +
-					 "\nType: " + std::to_string(container_info.m_type) +
-					 "\nName: " + container_info.m_name +
-					 "\nImage: " + container_info.m_image +
-					 "\nMesos Task ID: " + container_info.m_mesos_task_id, sinsp_logger::SEV_DEBUG);
-		*/
+		root = json::parse(jsons);
 	}
-	else
+	catch (json::parse_error& e)
 	{
-		std::string errstr;
-		errstr = Json::Reader().getFormattedErrorMessages();
-		throw sinsp_exception("Invalid JSON encountered while parsing container info: " + json + "error=" + errstr);
+		throw sinsp_exception("Invalid JSON encountered while parsing container info: " + json + "error=" + e.what());
 	}
+
+	xxx
+	sinsp_container_info container_info;
+	const json& container = root["container"];
+	const json& id = container["id"];
+	if(!id.is_null() && id.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_id = id.asString();
+	}
+	const json& type = container["type"];
+	if(!type.is_null() && type.isConvertibleTo(Json::uintValue))
+	{
+		container_info.m_type = static_cast<sinsp_container_type>(type.asUInt());
+	}
+	const json& name = container["name"];
+	if(!name.is_null() && name.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_name = name.asString();
+	}
+	const json& image = container["image"];
+	if(!image.is_null() && image.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_image = image.asString();
+	}
+	const json& imageid = container["imageid"];
+	if(!imageid.is_null() && imageid.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_imageid = imageid.asString();
+	}
+	const json& imagerepo = container["imagerepo"];
+	if(!imagerepo.is_null() && imagerepo.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_imagerepo = imagerepo.asString();
+	}
+	const json& imagetag = container["imagetag"];
+	if(!imagetag.is_null() && imagetag.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_imagetag = imagetag.asString();
+	}
+	const json& imagedigest = container["imagedigest"];
+	if(!imagedigest.is_null() && imagedigest.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_imagedigest = imagedigest.asString();
+	}
+	const json& privileged = container["privileged"];
+	if(!privileged.is_null() && privileged.isConvertibleTo(Json::booleanValue))
+	{
+		container_info.m_privileged = privileged.asBool();
+	}
+
+	sinsp_container_info::parse_json_mounts(container["Mounts"], container_info.m_mounts);
+	const json& contip = container["ip"];
+	if(!contip.is_null() && contip.isConvertibleTo(Json::stringValue))
+	{
+		uint32_t ip;
+
+		if(inet_pton(AF_INET, contip.asString().c_str(), &ip) == -1)
+		{
+			throw sinsp_exception("Invalid 'ip' field while parsing container info: " + json);
+		}
+
+		container_info.m_container_ip = ntohl(ip);
+	}
+	const json& mesos_task_id = container["mesos_task_id"];
+	if(!mesos_task_id.is_null() && mesos_task_id.isConvertibleTo(Json::stringValue))
+	{
+		container_info.m_mesos_task_id = mesos_task_id.asString();
+	}
+	m_inspector->m_container_manager.add_container(container_info, evt->get_thread_info(true));
+	/*
+	  g_logger.log("Container\n-------\nID:" + container_info.m_id +
+	  "\nType: " + std::to_string(container_info.m_type) +
+	  "\nName: " + container_info.m_name +
+	  "\nImage: " + container_info.m_image +
+	  "\nMesos Task ID: " + container_info.m_mesos_task_id, sinsp_logger::SEV_DEBUG);
+	*/
 }
 
 void sinsp_parser::parse_container_evt(sinsp_evt *evt)
@@ -4440,11 +4442,11 @@ int sinsp_parser::get_k8s_version(const std::string& json)
 	if(m_k8s_capture_version == k8s_state_t::CAPTURE_VERSION_NONE)
 	{
 		g_logger.log(json, sinsp_logger::SEV_DEBUG);
-		Json::Value root;
+		json root;
 		if(Json::Reader().parse(json, root))
 		{
-			const Json::Value& items = root["items"]; // new
-			if(!items.isNull())
+			const json& items = root["items"]; // new
+			if(!items.is_null())
 			{
 				g_logger.log("K8s capture version " + std::to_string(k8s_state_t::CAPTURE_VERSION_2) + " detected.",
 							 sinsp_logger::SEV_DEBUG);
@@ -4452,8 +4454,8 @@ int sinsp_parser::get_k8s_version(const std::string& json)
 				return m_k8s_capture_version;
 			}
 
-			const Json::Value& object = root["object"]; // old
-			if(!object.isNull())
+			const json& object = root["object"]; // old
+			if(!object.is_null())
 			{
 				g_logger.log("K8s capture version " + std::to_string(k8s_state_t::CAPTURE_VERSION_2) + " detected.",
 							 sinsp_logger::SEV_DEBUG);

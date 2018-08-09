@@ -29,7 +29,6 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/ioctl.h>
 #endif
 #include <third-party/tinydir.h>
-#include <json/json.h>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -883,7 +882,7 @@ int lua_cbacks::get_thread_table_int(lua_State *ls, bool include_fds, bool bareb
 		//
 		lua_pushstring(ls, "fdtable");
 		lua_newtable(ls);
-		
+
 		if(include_fds)
 		{
 			for(fdit = fdtable->m_table.begin(); fdit != fdtable->m_table.end(); ++fdit)

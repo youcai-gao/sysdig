@@ -17,7 +17,7 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
-#include <json/json.h>
+#include <nlohmann/json.h>
 
 class sinsp_filter_check;
 
@@ -89,8 +89,7 @@ private:
 	bool m_require_all_values;
 	vector<sinsp_filter_check*> m_chks_to_free;
 
-	Json::Value m_root;
-	Json::FastWriter m_writer;
+	nlohmann::json m_root;
 };
 
 /*!

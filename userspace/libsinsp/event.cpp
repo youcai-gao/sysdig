@@ -32,6 +32,8 @@ along with sysdig.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../libscap/scap.h"
 
+using json = nlohmann::json;
+
 extern sinsp_evttables g_infotables;
 
 #define SET_NUMERIC_FORMAT(resfmt, fmt, ostr, ustr, xstr) do {	\
@@ -533,7 +535,7 @@ uint32_t strcpy_sanitized(char *dest, char *src, uint32_t dstsize)
 	return dstsize;
 }
 
-int sinsp_evt::render_fd_json(Json::Value *ret, int64_t fd, const char** resolved_str, sinsp_evt::param_fmt fmt)
+int sinsp_evt::render_fd_json(json *ret, int64_t fd, const char** resolved_str, sinsp_evt::param_fmt fmt)
 {
 	sinsp_threadinfo* tinfo = get_thread_info();
 	if(tinfo == NULL)
@@ -736,12 +738,12 @@ char* sinsp_evt::render_fd(int64_t fd, const char** resolved_str, sinsp_evt::par
 	return &m_paramstr_storage[0];
 }
 
-Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_str, sinsp_evt::param_fmt fmt)
+json sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_str, sinsp_evt::param_fmt fmt)
 {
 	const ppm_param_info* param_info;
 	char* payload;
 	uint16_t payload_len;
-	Json::Value ret;
+	json ret;
 
 	//
 	// Make sure the params are actually loaded
@@ -804,7 +806,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 
 	case PT_INT64:
 		ASSERT(payload_len == sizeof(int64_t));
-		ret = (Json::Value::Int64)*(int64_t *)payload;
+		ret = *(int64_t *)payload;
 		break;
 
 	case PT_UINT8:
@@ -824,13 +826,13 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 
 	case PT_UINT64:
 		ASSERT(payload_len == sizeof(uint64_t));
-		ret = (Json::Value::UInt64)*(int64_t *)payload;
+		ret = *(int64_t *)payload;
 		break;
 
 	case PT_PID:
 		{
 			ASSERT(payload_len == sizeof(int64_t));
-			ret = (Json::Value::UInt64)*(int64_t *)payload;
+			ret = *(int64_t *)payload;
 
 			sinsp_threadinfo* atinfo = m_inspector->get_thread(*(int64_t *)payload, false, true);
 			if(atinfo != NULL)
@@ -875,7 +877,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 				         "%s", errstr.c_str());
 			}
 		}
-		ret = (Json::Value::Int64)val;
+		ret = val;
 	}
 	break;
 
@@ -887,7 +889,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 			ASSERT(payload_len == sizeof(int64_t));
 			int64_t fd = *(int64_t*)payload;
 			render_fd_json(&ret, fd, resolved_str, fmt);
-			ret["num"] = (Json::Value::UInt64)*(int64_t *)payload;
+			ret["num"] = *(int64_t *)payload;
 			break;
 		}
 
@@ -900,7 +902,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 	case PT_SOCKADDR:
 		if(payload_len == 0)
 		{
-			ret = Json::nullValue;
+			ret = nullptr;
 			break;
 		}
 		else if(payload[0] == AF_UNIX)
@@ -949,7 +951,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 	case PT_SOCKTUPLE:
 		if(payload_len == 0)
 		{
-			ret = Json::nullValue;
+			ret = nullptr;
 			break;
 		}
 
@@ -957,8 +959,8 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 		{
 			if(payload_len == 1 + 4 + 2 + 4 + 2)
 			{
-				Json::Value source;
-				Json::Value dest;
+				json source;
+				json dest;
 
 				const int ipv4_len = (3 + 1) * 4 + 1;
 				char ipv4_addr[ ipv4_len ];
@@ -1010,8 +1012,8 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 
 				if(sinsp_utils::is_ipv4_mapped_ipv6(sip6) && sinsp_utils::is_ipv4_mapped_ipv6(dip6))
 				{
-					Json::Value source;
-					Json::Value dest;
+					json source;
+					json dest;
 
 					const int ipv4_len = (3 + 1) * 4 + 1;
 					char ipv4_addr[ ipv4_len ];
@@ -1055,8 +1057,8 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 					if(inet_ntop(AF_INET6, sip6, srcstr, sizeof(srcstr)) &&
 						inet_ntop(AF_INET6, dip6, dststr, sizeof(dststr)))
 					{
-						Json::Value source;
-						Json::Value dest;
+						json source;
+						json dest;
 
 						source["addr"] = srcstr;
 						source["port"] = (unsigned int)*(uint16_t*)(payload + 17);
@@ -1145,7 +1147,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 		{
 			ASSERT(payload_len == sizeof(uint64_t));
 			uint64_t val = *(uint64_t *)payload;
-			ret = (Json::Value::Int64)val;
+			ret = val;
 
 			snprintf(&m_resolved_paramstr_storage[0],
 						m_resolved_paramstr_storage.size(),
@@ -1159,7 +1161,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 		{
 			uint32_t val = *(uint32_t *)payload & (((uint64_t)1 << payload_len * 8) - 1);
 			ret["val"] = val;
-			ret["flags"] = Json::arrayValue;
+			ret["flags"] = json::array();
 
 			const struct ppm_name_value *flags = (const struct ppm_name_value *)m_info->params[id].info;
 			uint32_t initial_val = val;
@@ -1170,7 +1172,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 				if((flags->value == 0 && initial_val == 0) ||
 				   (flags->value != 0 && (val & flags->value) == flags->value && val != 0))
 				{
-					ret["flags"].append(flags->name);
+					ret["flags"].push_back(flags->name);
 
 					// We remove current flags value to avoid duplicate flags e.g. PPM_O_RDWR, PPM_O_RDONLY, PPM_O_WRONLY
 					val &= ~flags->value;
@@ -1181,7 +1183,7 @@ Json::Value sinsp_evt::get_param_as_json(uint32_t id, OUT const char** resolved_
 
 			if(flags != NULL && flags->name != NULL)
 			{
-				ret["flags"].append(flags->name);
+				ret["flags"].push_back(flags->name);
 			}
 
 			break;
