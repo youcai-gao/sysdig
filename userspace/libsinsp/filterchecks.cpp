@@ -5583,34 +5583,57 @@ int32_t sinsp_filter_check_container::parse_field_name(const char* str, bool all
 uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len, bool sanitize_strings)
 {
 	*len = 0;
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
-	if(tinfo == NULL)
+	string container_id;
+
+	if(evt->get_type() != PPME_CONTAINER_JSON_E)
 	{
-		return NULL;
+		sinsp_threadinfo* tinfo = evt->get_thread_info();
+		if(tinfo == NULL)
+		{
+			return NULL;
+		}
+		container_id = tinfo->m_container_id;
+	}
+	else
+	{
+		sinsp_evt_param *parinfo = evt->get_param(0);
+		if(!parinfo)
+		{
+			return NULL;
+		}
+		std::string json(parinfo->m_val, parinfo->m_len);
+		Json::Value root;
+		if(!Json::Reader().parse(json, root))
+		{
+			return NULL;
+		}
+		container_id = root["container"]["id"].asString();
 	}
 
 	switch(m_field_id)
 	{
 	case TYPE_CONTAINER_ID:
-		if(tinfo->m_container_id.empty())
+
+		if(container_id.empty())
 		{
 			m_tstr = "host";
 		}
 		else
 		{
-			m_tstr = tinfo->m_container_id;
+			m_tstr = container_id;
 		}
 
 		RETURN_EXTRACT_STRING(m_tstr);
 	case TYPE_CONTAINER_NAME:
-		if(tinfo->m_container_id.empty())
+
+		if(container_id.empty())
 		{
 			m_tstr = "host";
 		}
 		else
 		{
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5626,14 +5649,14 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 
 		RETURN_EXTRACT_STRING(m_tstr);
 	case TYPE_CONTAINER_IMAGE:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			return NULL;
 		}
 		else
 		{
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5652,14 +5675,14 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 	case TYPE_CONTAINER_IMAGE_REPOSITORY:
 	case TYPE_CONTAINER_IMAGE_TAG:
 	case TYPE_CONTAINER_IMAGE_DIGEST:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			return NULL;
 		}
 		else
 		{
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5694,14 +5717,14 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 
 		RETURN_EXTRACT_STRING(m_tstr);
 	case TYPE_CONTAINER_TYPE:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			m_tstr = "host";
 		}
 		else
 		{
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5730,14 +5753,14 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 		}
 		RETURN_EXTRACT_STRING(m_tstr);
 	case TYPE_CONTAINER_PRIVILEGED:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			return NULL;
 		}
 		else
 		{
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5757,14 +5780,14 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 		RETURN_EXTRACT_VAR(m_u32val);
 		break;
 	case TYPE_CONTAINER_MOUNTS:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			return NULL;
 		}
 		else
 		{
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5791,7 +5814,7 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 
 		break;
 	case TYPE_CONTAINER_MOUNT:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			return NULL;
 		}
@@ -5799,7 +5822,7 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 		{
 
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
@@ -5834,7 +5857,7 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 	case TYPE_CONTAINER_MOUNT_MODE:
 	case TYPE_CONTAINER_MOUNT_RDWR:
 	case TYPE_CONTAINER_MOUNT_PROPAGATION:
-		if(tinfo->m_container_id.empty())
+		if(container_id.empty())
 		{
 			return NULL;
 		}
@@ -5842,7 +5865,7 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
 		{
 
 			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+				m_inspector->m_container_manager.get_container(container_id);
 			if(!container_info)
 			{
 				return NULL;
